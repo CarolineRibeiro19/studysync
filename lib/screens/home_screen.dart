@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
 import '../models/group.dart';
 import '../screens/meeting_screen.dart'; // <--- Adicione isso ao topo
-
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,42 +26,38 @@ class _HomeScreenState extends State<HomeScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Novo Grupo'),
-        content: TextField(
-          controller: nameController,
-          decoration: const InputDecoration(labelText: 'Nome do grupo'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Novo Grupo'),
+            content: TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Nome do grupo'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final String name = nameController.text.trim();
+                  if (name.isNotEmpty) {
+                    final newGroup = Group(name: name, createdBy: Uuid());
+                    groupBox.add(newGroup);
+                    setState(() {});
+                  }
+                  Navigator.pop(context);
+                },
+                child: const Text('Criar'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              final String name = nameController.text.trim();
-              if (name.isNotEmpty) {
-                final newGroup = Group(
-                  name: name,
-                  createdAt: DateTime.now(),
-                );
-                groupBox.add(newGroup);
-                setState(() {});
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('Criar'),
-          ),
-        ],
-      ),
     );
   }
 
   Widget _buildGroupList() {
     if (groupBox.isEmpty) {
-      return const Center(
-        child: Text('Nenhum grupo criado ainda.'),
-      );
+      return const Center(child: Text('Nenhum grupo criado ainda.'));
     }
 
     return ListView.builder(
@@ -76,9 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => MeetingScreen(group: group),
-              ),
+              MaterialPageRoute(builder: (_) => MeetingScreen(group: group)),
             );
           },
         );
@@ -89,9 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Meus Grupos'),
-      ),
+      appBar: AppBar(title: const Text('Meus Grupos')),
       body: _buildGroupList(),
       floatingActionButton: FloatingActionButton(
         onPressed: _showCreateGroupDialog,
