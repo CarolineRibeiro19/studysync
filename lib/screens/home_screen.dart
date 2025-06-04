@@ -1,9 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
-import 'package:intl/intl.dart';
-import '../models/group.dart';
-import '../screens/meeting_screen.dart'; // <--- Adicione isso ao topo
-
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,89 +8,116 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late Box<Group> groupBox;
+  int _selectedIndex = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    groupBox = Hive.box<Group>('groups');
-  }
+  final List<Map<String, String>> futureMeetings = [
+    {'title': 'Reunião de Cálculo', 'date': '04/06 - 18h00'},
+    {'title': 'Grupo de IA', 'date': '05/06 - 15h30'},
+    {'title': 'Estudos para Compiladores', 'date': '06/06 - 10h00'},
+  ];
 
-  void _showCreateGroupDialog() {
-    final TextEditingController nameController = TextEditingController();
+  void _onNavTap(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Novo Grupo'),
-        content: TextField(
-          controller: nameController,
-          decoration: const InputDecoration(labelText: 'Nome do grupo'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final String name = nameController.text.trim();
-              if (name.isNotEmpty) {
-                final newGroup = Group(
-                  name: name,
-                  createdAt: DateTime.now(),
-                );
-                groupBox.add(newGroup);
-                setState(() {});
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('Criar'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGroupList() {
-    if (groupBox.isEmpty) {
-      return const Center(
-        child: Text('Nenhum grupo criado ainda.'),
-      );
+    switch (index) {
+      case 1:
+        Navigator.pushNamed(context, '/groups');
+        break;
+      case 2:
+        Navigator.pushNamed(context, '/checkin');
+        break;
+      default:
+        break;
     }
-
-    return ListView.builder(
-      itemCount: groupBox.length,
-      itemBuilder: (context, index) {
-        final group = groupBox.getAt(index);
-        return ListTile(
-          title: Text(group!.name),
-          subtitle: Text(
-            'Criado em: ${DateFormat('dd/MM/yyyy – HH:mm').format(group.createdAt)}',
-          ),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => MeetingScreen(group: group),
-              ),
-            );
-          },
-        );
-      },
-    );
   }
 
   @override
   Widget build(BuildContext context) {
+    const int userPoints = 120;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Meus Grupos'),
+        automaticallyImplyLeading: false,
+        title: const Text('StudySync'),
+        centerTitle: true,
+        leading: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Row(
+            children: [
+              const Icon(Icons.star, color: Colors.amber, size: 20),
+              const SizedBox(width: 4),
+              Text('$userPoints'),
+            ],
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () => Navigator.pushNamed(context, '/profile'),
+          ),
+        ],
       ),
-      body: _buildGroupList(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showCreateGroupDialog,
-        child: const Icon(Icons.add),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Próximas Reuniões',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: futureMeetings.isEmpty
+                  ? const Text('Nenhuma reunião agendada.')
+                  : ListView.builder(
+                itemCount: futureMeetings.length,
+                itemBuilder: (context, index) {
+                  final meeting = futureMeetings[index];
+                  return Card(
+                    elevation: 2,
+                    child: ListTile(
+                      title: Text(meeting['title']!),
+                      subtitle: Text(meeting['date']!),
+                      trailing: const Icon(Icons.arrow_forward_ios),
+                      onTap: () {
+                        // Em breve: detalhes da reunião
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            Center(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.history),
+                label: const Text('Ver histórico de reuniões'),
+                onPressed: () => Navigator.pushNamed(context, '/history'),
+              ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onNavTap,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Início',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.group),
+            label: 'Grupos',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.qr_code_scanner),
+            label: 'Presença',
+          ),
+        ],
       ),
     );
   }

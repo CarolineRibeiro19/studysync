@@ -18,8 +18,8 @@ class MeetingAdapter extends TypeAdapter<Meeting> {
     };
     return Meeting(
       title: fields[0] as String,
-      dateTime: fields[1] as DateTime,
-      location: fields[2] as String,
+      date: fields[1] as DateTime,
+      attended: fields[2] as bool,
     );
   }
 
@@ -30,9 +30,9 @@ class MeetingAdapter extends TypeAdapter<Meeting> {
       ..writeByte(0)
       ..write(obj.title)
       ..writeByte(1)
-      ..write(obj.dateTime)
+      ..write(obj.date)
       ..writeByte(2)
-      ..write(obj.location);
+      ..write(obj.attended);
   }
 
   @override
