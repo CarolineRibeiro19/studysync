@@ -23,18 +23,18 @@ class GroupScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(12),
-        child: ValueListenableBuilder(
-          valueListenable: Hive.box<Group>('groups').listenable(),
-          builder: (context, Box<Group> box, _) {
-            final groups = box.values.toList();
+      body: ValueListenableBuilder(
+        valueListenable: Hive.box<Group>('groups').listenable(),
+        builder: (context, Box<Group> box, _) {
+          final groups = box.values.toList();
 
-            if (groups.isEmpty) {
-              return const Center(child: Text('Você ainda não tem grupos.'));
-            }
+          if (groups.isEmpty) {
+            return const Center(child: Text('Você ainda não tem grupos.'));
+          }
 
-            return GridView.builder(
+          return Padding(
+            padding: const EdgeInsets.all(12),
+            child: GridView.builder(
               itemCount: groups.length,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
@@ -55,9 +55,14 @@ class GroupScreen extends StatelessWidget {
                     children: [
                       const Icon(Icons.group, size: 40),
                       const SizedBox(height: 10),
-                      Text(group.name,
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text(
+                        group.name,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Text(group.subject),
                       Text('${group.memberCount} pessoas'),
@@ -67,9 +72,9 @@ class GroupScreen extends StatelessWidget {
                   ),
                 );
               },
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
