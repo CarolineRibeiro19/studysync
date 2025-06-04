@@ -17,22 +17,27 @@ class MeetingAdapter extends TypeAdapter<Meeting> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return Meeting(
-      title: fields[0] as String,
-      dateTime: fields[1] as DateTime,
-      location: fields[2] as String,
-    );
+      title: fields[1] as String,
+      dateTime: fields[2] as DateTime,
+      location: fields[3] as String,
+      groupId: fields[4] as String,
+    )..id = fields[0] as String;
   }
 
   @override
   void write(BinaryWriter writer, Meeting obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(5)
       ..writeByte(0)
-      ..write(obj.title)
+      ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.dateTime)
+      ..write(obj.title)
       ..writeByte(2)
-      ..write(obj.location);
+      ..write(obj.dateTime)
+      ..writeByte(3)
+      ..write(obj.location)
+      ..writeByte(4)
+      ..write(obj.groupId);
   }
 
   @override

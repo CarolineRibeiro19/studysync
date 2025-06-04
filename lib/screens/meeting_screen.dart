@@ -28,72 +28,74 @@ class _MeetingScreenState extends State<MeetingScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Nova Reunião'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(labelText: 'Título'),
-            ),
-            TextField(
-              controller: locationController,
-              decoration: const InputDecoration(labelText: 'Local'),
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () async {
-                final date = await showDatePicker(
-                  context: context,
-                  initialDate: selectedDateTime,
-                  firstDate: DateTime.now(),
-                  lastDate: DateTime(2100),
-                );
-                if (date != null) {
-                  final time = await showTimePicker(
-                    context: context,
-                    initialTime: TimeOfDay.fromDateTime(selectedDateTime),
-                  );
-                  if (time != null) {
-                    selectedDateTime = DateTime(
-                      date.year,
-                      date.month,
-                      date.day,
-                      time.hour,
-                      time.minute,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Nova Reunião'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(labelText: 'Título'),
+                ),
+                TextField(
+                  controller: locationController,
+                  decoration: const InputDecoration(labelText: 'Local'),
+                ),
+                const SizedBox(height: 10),
+                ElevatedButton(
+                  onPressed: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDateTime,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime(2100),
                     );
-                  }
-                }
-              },
-              child: const Text('Selecionar Data e Hora'),
+                    if (date != null) {
+                      final time = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.fromDateTime(selectedDateTime),
+                      );
+                      if (time != null) {
+                        selectedDateTime = DateTime(
+                          date.year,
+                          date.month,
+                          date.day,
+                          time.hour,
+                          time.minute,
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Selecionar Data e Hora'),
+                ),
+              ],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final title = titleController.text.trim();
+                  final location = locationController.text.trim();
+                  if (title.isNotEmpty && location.isNotEmpty) {
+                    final meeting = Meeting(
+                      title: title,
+                      location: location,
+                      dateTime: selectedDateTime,
+                      groupId: "",
+                    );
+                    meetingBox.add(meeting);
+                    setState(() {});
+                  }
+                  Navigator.pop(context);
+                },
+                child: const Text('Criar'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              final title = titleController.text.trim();
-              final location = locationController.text.trim();
-              if (title.isNotEmpty && location.isNotEmpty) {
-                final meeting = Meeting(
-                  title: title,
-                  location: location,
-                  dateTime: selectedDateTime,
-                );
-                meetingBox.add(meeting);
-                setState(() {});
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('Criar'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -107,22 +109,22 @@ class _MeetingScreenState extends State<MeetingScreen> {
   Widget build(BuildContext context) {
     final meetings = _getMeetings();
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Reuniões - ${widget.group.name}'),
-      ),
-      body: meetings.isEmpty
-          ? const Center(child: Text('Nenhuma reunião marcada.'))
-          : ListView.builder(
-        itemCount: meetings.length,
-        itemBuilder: (context, index) {
-          final m = meetings[index];
-          return ListTile(
-            title: Text(m.title),
-            subtitle: Text(
-                '${m.location}\n${DateFormat('dd/MM/yyyy – HH:mm').format(m.dateTime)}'),
-          );
-        },
-      ),
+      appBar: AppBar(title: Text('Reuniões - ${widget.group.name}')),
+      body:
+          meetings.isEmpty
+              ? const Center(child: Text('Nenhuma reunião marcada.'))
+              : ListView.builder(
+                itemCount: meetings.length,
+                itemBuilder: (context, index) {
+                  final m = meetings[index];
+                  return ListTile(
+                    title: Text(m.title),
+                    subtitle: Text(
+                      '${m.location}\n${DateFormat('dd/MM/yyyy – HH:mm').format(m.dateTime)}',
+                    ),
+                  );
+                },
+              ),
       floatingActionButton: FloatingActionButton(
         onPressed: _createMeetingDialog,
         child: const Icon(Icons.add),
