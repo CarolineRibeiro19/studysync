@@ -1,4 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive/hive.dart';
+import 'package:intl/intl.dart';
+import '../models/group.dart';
+import '../models/meeting.dart';
+import '../models/user.dart';
+import '../blocs/user/user_bloc.dart';
+import '../blocs/user/user_state.dart';
+import 'group_screen.dart';
+import 'checkin_screen.dart';
+import 'ranking_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -8,49 +19,60 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
+  int _selectedIndex = 1;
 
-  final List<Map<String, String>> futureMeetings = [
-    {'title': 'Reunião de Cálculo', 'date': '04/06 - 18h00'},
-    {'title': 'Grupo de IA', 'date': '05/06 - 15h30'},
-    {'title': 'Estudos para Compiladores', 'date': '06/06 - 10h00'},
+  late final Box<Group> groupBox = Hive.box<Group>('groups');
+  late final Box<Meeting> meetingBox = Hive.box<Meeting>('meetings');
+
+  final List<Widget> _screens = [
+    const GroupScreen(),
+    const _MainHomeTab(),
+    const CheckInScreen(),
   ];
 
   void _onNavTap(int index) {
     setState(() {
       _selectedIndex = index;
     });
+  }
 
-    switch (index) {
-      case 1:
-        Navigator.pushNamed(context, '/groups');
-        break;
-      case 2:
-        Navigator.pushNamed(context, '/checkin');
-        break;
-      default:
-        break;
-    }
+  void _openRanking() {
+    Navigator.pushNamed(context, '/ranking');
   }
 
   @override
   Widget build(BuildContext context) {
-    const int userPoints = 120;
-
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
         title: const Text('StudySync'),
         centerTitle: true,
-        leading: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Row(
-            children: [
-              const Icon(Icons.star, color: Colors.amber, size: 20),
-              const SizedBox(width: 4),
-              Text('$userPoints'),
-            ],
-          ),
+        leading: BlocBuilder<UserBloc, UserState>(
+          builder: (context, state) {
+            if (state is UserAuthenticated) {
+              return GestureDetector(
+                onTap: _openRanking,
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        WidgetSpan(
+                          child: Icon(Icons.star, color: Colors.amber, size: 20),
+                          alignment: PlaceholderAlignment.middle,
+                        ),
+                        const WidgetSpan(child: SizedBox(width: 4)),
+                        TextSpan(
+                          text: '${state.user.points}',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+            return const SizedBox();
+          },
         ),
         actions: [
           IconButton(
@@ -59,63 +81,74 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Próximas Reuniões',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: futureMeetings.isEmpty
-                  ? const Text('Nenhuma reunião agendada.')
-                  : ListView.builder(
-                itemCount: futureMeetings.length,
-                itemBuilder: (context, index) {
-                  final meeting = futureMeetings[index];
-                  return Card(
-                    elevation: 2,
-                    child: ListTile(
-                      title: Text(meeting['title']!),
-                      subtitle: Text(meeting['date']!),
-                      trailing: const Icon(Icons.arrow_forward_ios),
-                      onTap: () {
-                        // Em breve: detalhes da reunião
-                      },
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
-            Center(
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.history),
-                label: const Text('Ver histórico de reuniões'),
-                onPressed: () => Navigator.pushNamed(context, '/history'),
-              ),
-            ),
-          ],
-        ),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _screens,
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onNavTap,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Início',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.group),
             label: 'Grupos',
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Início',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.qr_code_scanner),
             label: 'Presença',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MainHomeTab extends StatelessWidget {
+  const _MainHomeTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final Box<Meeting> meetingBox = Hive.box<Meeting>('meetings');
+    final now = DateTime.now();
+
+    final todayMeetings = meetingBox.values
+        .where((m) =>
+    m.dateTime.year == now.year &&
+        m.dateTime.month == now.month &&
+        m.dateTime.day == now.day)
+        .toList()
+      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Reuniões de Hoje',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          todayMeetings.isEmpty
+              ? const Text('Nenhuma reunião marcada para hoje.')
+              : Expanded(
+            child: ListView.builder(
+              itemCount: todayMeetings.length,
+              itemBuilder: (context, index) {
+                final meeting = todayMeetings[index];
+                return Card(
+                  child: ListTile(
+                    title: Text(meeting.title),
+                    subtitle:
+                    Text(DateFormat('HH:mm').format(meeting.dateTime)),
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),

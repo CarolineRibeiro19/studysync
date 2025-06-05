@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import '../models/group.dart';
+import 'package:studysync/models/group.dart';
+import 'package:studysync/models/user.dart';
 
 class AddGroupScreen extends StatefulWidget {
   const AddGroupScreen({super.key});
@@ -11,66 +12,64 @@ class AddGroupScreen extends StatefulWidget {
 
 class _AddGroupScreenState extends State<AddGroupScreen> {
   final _formKey = GlobalKey<FormState>();
-  String _name = '';
-  String _subject = '';
-  int _memberCount = 1;
+  final _nameController = TextEditingController();
+  final _subjectController = TextEditingController();
+  final _memberCountController = TextEditingController();
 
   void _saveGroup() {
     if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
+      final groupBox = Hive.box<Group>('groups');
+      final userBox = Hive.box<User>('users');
+      final currentUser = userBox.values.firstWhere((u) => u.isLoggedIn);
 
       final newGroup = Group(
-        name: _name,
-        subject: _subject,
-        memberCount: _memberCount,
+        name: _nameController.text.trim(),
+        subject: _subjectController.text.trim(),
+        memberCount: int.parse(_memberCountController.text),
+        createdBy: currentUser.id,
+        members: [currentUser.id], // ✅ Adiciona o criador como membro
       );
 
-      final box = Hive.box<Group>('groups');
-      box.add(newGroup);
-
-      Navigator.pop(context); // volta para GroupScreen
+      groupBox.add(newGroup);
+      Navigator.pop(context); // Volta para GroupScreen
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Novo Grupo')),
+      appBar: AppBar(title: const Text('Criar Novo Grupo')),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
-          child: ListView(
+          child: Column(
             children: [
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Nome do grupo'),
-                validator: (value) => value!.isEmpty ? 'Obrigatório' : null,
-                onSaved: (value) => _name = value!,
+                controller: _nameController,
+                decoration: const InputDecoration(labelText: 'Nome do Grupo'),
+                validator: (value) =>
+                value == null || value.isEmpty ? 'Obrigatório' : null,
               ),
-              const SizedBox(height: 16),
               TextFormField(
+                controller: _subjectController,
                 decoration: const InputDecoration(labelText: 'Matéria'),
-                validator: (value) => value!.isEmpty ? 'Obrigatório' : null,
-                onSaved: (value) => _subject = value!,
+                validator: (value) =>
+                value == null || value.isEmpty ? 'Obrigatório' : null,
               ),
-              const SizedBox(height: 16),
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Número de pessoas'),
+                controller: _memberCountController,
+                decoration: const InputDecoration(labelText: 'Nº de Participantes'),
                 keyboardType: TextInputType.number,
-                validator: (value) {
-                  final intValue = int.tryParse(value ?? '');
-                  if (intValue == null || intValue <= 0) {
-                    return 'Número inválido';
-                  }
-                  return null;
-                },
-                onSaved: (value) => _memberCount = int.parse(value!),
+                validator: (value) =>
+                value == null || int.tryParse(value) == null
+                    ? 'Número inválido'
+                    : null,
               ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
+              const SizedBox(height: 20),
+              ElevatedButton(
                 onPressed: _saveGroup,
-                icon: const Icon(Icons.check),
-                label: const Text('Criar Grupo'),
+                child: const Text('Criar Grupo'),
               ),
             ],
           ),

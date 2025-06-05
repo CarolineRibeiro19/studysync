@@ -8,14 +8,22 @@ class Meeting extends HiveObject {
   String title;
 
   @HiveField(1)
-  DateTime date;
+  String location;
 
   @HiveField(2)
+  DateTime dateTime;
+
+  @HiveField(3)
+  String groupId;
+
+  @HiveField(4)
   bool attended;
 
   Meeting({
     required this.title,
-    required this.date,
+    required this.location,
+    required this.dateTime,
+    required this.groupId,
     this.attended = false,
   });
 }

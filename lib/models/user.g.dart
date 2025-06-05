@@ -1,44 +1,50 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'meeting.dart';
+part of 'user.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class MeetingAdapter extends TypeAdapter<Meeting> {
+class UserAdapter extends TypeAdapter<User> {
   @override
-  final int typeId = 1;
+  final int typeId = 2;
 
   @override
-  Meeting read(BinaryReader reader) {
+  User read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Meeting(
-      title: fields[0] as String,
-      location: fields[1] as String,
-      dateTime: fields[2] as DateTime,
-      groupId: fields[3] as String,
-      attended: fields[4] as bool,
-    );
+    return User(
+      name: fields[1] as String,
+      email: fields[2] as String,
+      password: fields[3] as String,
+    )
+      ..id = fields[0] as String
+      ..createdAt = fields[4] as DateTime
+      ..isLoggedIn = fields[5] as bool
+      ..points = fields[6] as int;
   }
 
   @override
-  void write(BinaryWriter writer, Meeting obj) {
+  void write(BinaryWriter writer, User obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(7)
       ..writeByte(0)
-      ..write(obj.title)
+      ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.location)
+      ..write(obj.name)
       ..writeByte(2)
-      ..write(obj.dateTime)
+      ..write(obj.email)
       ..writeByte(3)
-      ..write(obj.groupId)
+      ..write(obj.password)
       ..writeByte(4)
-      ..write(obj.attended);
+      ..write(obj.createdAt)
+      ..writeByte(5)
+      ..write(obj.isLoggedIn)
+      ..writeByte(6)
+      ..write(obj.points);
   }
 
   @override
@@ -47,7 +53,7 @@ class MeetingAdapter extends TypeAdapter<Meeting> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is MeetingAdapter &&
+      other is UserAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }
