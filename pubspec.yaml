@@ -31,6 +31,8 @@ dependencies:
   flutter:
     sdk: flutter
   path_provider: ^2.0.15
+  supabase_flutter: ^1.10.17
+
 
   # Hive (persistência local)
   hive: ^2.2.3

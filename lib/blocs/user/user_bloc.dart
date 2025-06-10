@@ -1,80 +1,55 @@
-import 'package:bloc/bloc.dart';
-import 'package:hive/hive.dart';
-import 'package:studysync/blocs/user/user_event.dart';
-import 'package:studysync/blocs/user/user_state.dart';
-import '../../models/user.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supa;
+import '../../models/user.dart' as model;
+import 'user_event.dart';
+import 'user_state.dart';
 
 class UserBloc extends Bloc<UserEvent, UserState> {
-  final Box<User> userBox;
+  final supa.SupabaseClient supabase;
 
-  UserBloc({required this.userBox}) : super(UserInitial()) {
-    on<RegisterUser>(_onRegisterUser);
-    on<LoginUser>(_onLoginUser);
-    on<LogoutUser>(_onLogoutUser);
+  UserBloc({required this.supabase}) : super(UserInitial()) {
     on<LoadCurrentUser>(_onLoadCurrentUser);
+    on<LogoutUser>(_onLogoutUser);
   }
 
-  void _onRegisterUser(RegisterUser event, Emitter<UserState> emit) async {
-    emit(UserLoading());
-
-    final exists = userBox.values.any((u) => u.email == event.email);
-    if (exists) {
-      emit(const UserError("Email Already Exists"));
-      return;
-    }
-
-    final user = User(
-      email: event.email,
-      name: event.name,
-      password: event.password,
-    );
-
-    user.isLoggedIn = true;
-    await userBox.put(user.id, user);
-
-    emit(UserAuthenticated(user));
-  }
-
-  void _onLoginUser(LoginUser event, Emitter<UserState> emit) async {
-    emit(UserLoading());
-
-    try {
-      final user = userBox.values.firstWhere(
-            (u) => u.email == event.email && u.password == event.password,
-      );
-
-      user.isLoggedIn = true;
-      await user.save();
-
-      emit(UserAuthenticated(user));
-    } catch (_) {
-      emit(const UserError('Email or password incorrect'));
-    }
-  }
-
-  void _onLogoutUser(LogoutUser event, Emitter<UserState> emit) async {
-    final currentUser =
-        userBox.values.where((u) => u.isLoggedIn == true).firstOrNull;
-
-    if (currentUser != null) {
-      currentUser.isLoggedIn = false;
-      await currentUser.save();
-    }
-
-    emit(UserUnauthenticated());
-  }
-
-  void _onLoadCurrentUser(
+  Future<void> _onLoadCurrentUser(
       LoadCurrentUser event,
       Emitter<UserState> emit,
       ) async {
-    User? currentUser =
-        userBox.values.where((u) => u.isLoggedIn == true).firstOrNull;
+    emit(UserLoading());
 
-    if (currentUser != null) {
-      emit(UserAuthenticated(currentUser));
-    } else {
-      emit(UserUnauthenticated());
+    try {
+      final authUser = supabase.auth.currentUser;
+      if (authUser == null) {
+        emit(UserUnauthenticated());
+        return;
+      }
+
+      final profile = await supabase
+          .from('profiles')
+          .select()
+          .eq('id', int.parse(authUser.id))
+          .single();
+
+      final user = model.User(
+        id: profile['id'],
+        email: authUser.email ?? '',
+        name: profile['name'] ?? '',
+        groupId: profile['group_id'],
+        points: profile['points'] ?? 0,
+      );
+
+      emit(UserAuthenticated(user));
+    } catch (e) {
+      emit(UserError('Erro ao carregar usuário: $e'));
     }
+  }
+
+  Future<void> _onLogoutUser(
+      LogoutUser event,
+      Emitter<UserState> emit,
+      ) async {
+    await supabase.auth.signOut();
+    emit(UserUnauthenticated());
   }
 }

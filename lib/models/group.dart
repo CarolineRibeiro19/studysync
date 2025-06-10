@@ -1,34 +1,31 @@
-import 'package:hive/hive.dart';
-import 'package:uuid/uuid.dart';
-
-part 'group.g.dart';
-
-@HiveType(typeId: 0)
-class Group extends HiveObject {
-  @HiveField(0)
-  String id;
-
-  @HiveField(1)
-  String name;
-
-  @HiveField(2)
-  String subject;
-
-  @HiveField(3)
-  int memberCount;
-
-  @HiveField(5)
-  List<String> members;
-
-  @HiveField(6)
-  String createdBy; // novo campo
+class Group {
+  final int id;
+  final String name;
+  final List<int> members;
+  final int createdBy;
 
   Group({
+    required this.id,
     required this.name,
-    required this.subject,
-    required this.memberCount,
+    required this.members,
     required this.createdBy,
-    List<String>? members,
-  })  : id = const Uuid().v4(),
-        members = members ?? [];
+  });
+
+  factory Group.fromJson(Map<String, dynamic> json) {
+    return Group(
+      id: json['id'],
+      name: json['name'],
+      members: List<int>.from(json['members'] ?? []),
+      createdBy: json['created_by'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'members': members,
+      'created_by': createdBy,
+    };
+  }
 }
