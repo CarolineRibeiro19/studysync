@@ -22,15 +22,15 @@ class UserService {
     );
   }
 
-  Future<void> updateUserProfile({
+  Future<app_model.User> updateUserProfile({
     required String id,
     required String name,
-    required int? groupId,
   }) async {
-    await supabase
+    final response = await supabase
         .from('profiles')
-        .update({'name': name, 'group_id': groupId})
+        .update({'name': name})
         .eq('id', id);
+    return response.user;
   }
 
   Future<bool> loginUser(String email, String password) async {

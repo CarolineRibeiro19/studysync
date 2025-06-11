@@ -10,6 +10,7 @@ class UserBloc extends Bloc<UserEvent, UserState> {
     on<LoadCurrentUser>(_onLoadCurrentUser);
     on<LoginUser>(_onLoginUser);
     on<RegisterUser>(_onRegisterUser);
+    on<UpdateUserProfile>(_onUpdateUser);
     on<LogoutUser>(_onLogoutUser);
   }
 
@@ -57,6 +58,21 @@ class UserBloc extends Bloc<UserEvent, UserState> {
       }
     }
     emit(UserError('Registration failed.'));
+  }
+
+  Future<void> _onUpdateUser(UpdateUserProfile event, Emitter<UserState> emit) async {
+    if (state is! UserAuthenticated) return;
+
+    final currentUser = (state as UserAuthenticated).user;
+    emit(UserLoading());
+
+    try {
+      final updatedUser = await userService.updateUserProfile(id: currentUser.id, name: event.name);
+      emit(UserAuthenticated(updatedUser));
+    } catch (e) {
+      emit(UserError('Erro ao atualizar perfil'));
+      emit(UserAuthenticated(currentUser));
+    }
   }
 
   Future<void> _onLogoutUser(LogoutUser event, Emitter<UserState> emit) async {

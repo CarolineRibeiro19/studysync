@@ -68,6 +68,20 @@ class GroupService {
 
     final groupId = insertResponse['id'];
 
+    final user = await supabase
+      .from('profiles')
+      .select('group_id')
+      .eq('id', userId)
+      .single();
+
+    final List<dynamic> currentGroupIds = user['group_id'] ?? [];
+    final updatedGroupIds = {...currentGroupIds, groupId}.toList(); // ensures uniqueness
+
+    await supabase
+        .from('profiles')
+        .update({'group_id': updatedGroupIds})
+        .eq('id', userId);
+
     // Adiciona criador como membro
     await supabase.from('group_members').insert({
       'user_id': userId,

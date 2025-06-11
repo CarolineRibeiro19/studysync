@@ -21,4 +21,10 @@ class RegisterUser extends UserEvent {
   });
 }
 
+class UpdateUserProfile extends UserEvent {
+  final String name;
+
+  UpdateUserProfile(this.name);
+}
+
 class LogoutUser extends UserEvent {}
