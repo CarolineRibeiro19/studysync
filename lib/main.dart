@@ -15,7 +15,8 @@ Future<void> main() async {
 
   await Supabase.initialize(
     url: 'https://gxsjhocypdxvatgfgckf.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd4c2pob2N5cGR4dmF0Z2ZnY2tmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NzgwODgsImV4cCI6MjA2NTE1NDA4OH0.nGJ9K226qwP9kRMMpByKzoEhwvcuDq-CzL_HE4ybRL4',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd4c2pob2N5cGR4dmF0Z2ZnY2tmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NzgwODgsImV4cCI6MjA2NTE1NDA4OH0.nGJ9K226qwP9kRMMpByKzoEhwvcuDq-CzL_HE4ybRL4',
   );
 
   runApp(const StudySyncApp());
@@ -33,7 +34,8 @@ class StudySyncApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (_) => UserBloc(supabase: supabase)..add(LoadCurrentUser()),
+          create:
+              (_) => UserBloc(userService: userService)..add(LoadCurrentUser()),
         ),
         BlocProvider(
           create: (_) => MeetingBloc(meetingService: meetingService),

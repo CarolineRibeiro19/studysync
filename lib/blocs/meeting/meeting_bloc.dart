@@ -1,5 +1,4 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../models/meeting.dart';
 import '../../services/meeting_service.dart';
 import 'meeting_event.dart';
 import 'meeting_state.dart';

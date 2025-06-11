@@ -10,11 +10,8 @@ class UserService {
     final supaUser = supabase.auth.currentUser;
     if (supaUser == null) return null;
 
-    final response = await supabase
-        .from('profiles')
-        .select()
-        .eq('id', supaUser.id)
-        .single();
+    final response =
+        await supabase.from('profiles').select().eq('id', supaUser.id).single();
 
     return app_model.User(
       id: response['id'],
@@ -30,10 +27,10 @@ class UserService {
     required String name,
     required int? groupId,
   }) async {
-    await supabase.from('profiles').update({
-      'name': name,
-      'group_id': groupId,
-    }).eq('id', id);
+    await supabase
+        .from('profiles')
+        .update({'name': name, 'group_id': groupId})
+        .eq('id', id);
   }
 
   Future<bool> loginUser(String email, String password) async {
@@ -73,5 +70,9 @@ class UserService {
       print('Erro ao registrar: $e');
       return false;
     }
+  }
+
+  Future<void> signOutUser() async {
+    await supabase.auth.signOut();
   }
 }

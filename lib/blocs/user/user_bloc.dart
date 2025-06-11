@@ -1,55 +1,72 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' as supa;
-import '../../models/user.dart' as model;
+import '../../services/user_service.dart';
 import 'user_event.dart';
 import 'user_state.dart';
 
 class UserBloc extends Bloc<UserEvent, UserState> {
-  final supa.SupabaseClient supabase;
+  final UserService userService;
 
-  UserBloc({required this.supabase}) : super(UserInitial()) {
+  UserBloc({required this.userService}) : super(UserInitial()) {
     on<LoadCurrentUser>(_onLoadCurrentUser);
+    on<LoginUser>(_onLoginUser);
+    on<RegisterUser>(_onRegisterUser);
     on<LogoutUser>(_onLogoutUser);
   }
 
   Future<void> _onLoadCurrentUser(
-      LoadCurrentUser event,
-      Emitter<UserState> emit,
-      ) async {
+    LoadCurrentUser event,
+    Emitter<UserState> emit,
+  ) async {
     emit(UserLoading());
-
-    try {
-      final authUser = supabase.auth.currentUser;
-      if (authUser == null) {
-        emit(UserUnauthenticated());
-        return;
-      }
-
-      final profile = await supabase
-          .from('profiles')
-          .select()
-          .eq('id', int.parse(authUser.id))
-          .single();
-
-      final user = model.User(
-        id: profile['id'],
-        email: authUser.email ?? '',
-        name: profile['name'] ?? '',
-        groupId: profile['group_id'],
-        points: profile['points'] ?? 0,
-      );
-
+    final user = await userService.getCurrentUserProfile();
+    if (user != null) {
       emit(UserAuthenticated(user));
-    } catch (e) {
-      emit(UserError('Erro ao carregar usuário: $e'));
+    } else {
+      emit(UserUnauthenticated());
     }
   }
 
+  Future<void> _onLoginUser(
+    LoginUser event,
+    Emitter<UserState> emit,
+  ) async {
+    emit(UserLoading());
+    final success = await userService.loginUser(event.email, event.password);
+    if (success) {
+      final user = await userService.getCurrentUserProfile();
+      if (user != null) {
+        emit(UserAuthenticated(user));
+        return;
+      }
+    }
+    emit(UserError('Invalid login credentials.'));
+  }
+
+  Future<void> _onRegisterUser(
+    RegisterUser event,
+    Emitter<UserState> emit,
+  ) async {
+    emit(UserLoading());
+    final success = await userService.registerUser(
+      event.name,
+      event.email,
+      event.password,
+    );
+    if (success) {
+      final user = await userService.getCurrentUserProfile();
+      if (user != null) {
+        emit(UserAuthenticated(user));
+        return;
+      }
+    }
+    emit(UserError('Registration failed.'));
+  }
+
   Future<void> _onLogoutUser(
-      LogoutUser event,
-      Emitter<UserState> emit,
-      ) async {
-    await supabase.auth.signOut();
+    LogoutUser event,
+    Emitter<UserState> emit,
+  ) async {
+    await userService.signOutUser();
     emit(UserUnauthenticated());
   }
 }

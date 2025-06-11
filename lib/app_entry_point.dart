@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:studysync/services/user_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'blocs/user/user_bloc.dart';
 import 'blocs/user/user_event.dart';
@@ -20,7 +21,7 @@ class AppEntryPoint extends StatelessWidget {
       providers: [
         BlocProvider(
           create: (_) =>
-          UserBloc(supabase: supabase)..add(LoadCurrentUser()),
+          UserBloc(userService: UserService(supabase))..add(LoadCurrentUser()),
         ),
         BlocProvider(
           create: (_) => MeetingBloc(
