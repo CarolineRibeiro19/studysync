@@ -6,7 +6,6 @@ import '../../blocs/user/user_bloc.dart';
 import '../../blocs/user/user_state.dart';
 import '../../blocs/meeting/meeting_bloc.dart';
 import '../../blocs/meeting/meeting_state.dart';
-import '../../models/meeting.dart';
 import '../../widgets/custom_buttom.dart';
 import '../checkin/checkin_screen.dart';
 import '../groups/group_screen.dart';
@@ -22,6 +21,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 1;
+
 
   void _onItemTapped(int index) {
     if (index == _currentIndex) return;
