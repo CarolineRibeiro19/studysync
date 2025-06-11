@@ -32,13 +32,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
     switch (index) {
       case 0:
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const GroupScreen()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const GroupScreen()),
+        );
         break;
       case 1:
-      // já está na home
+        // já está na home
         break;
       case 2:
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const CheckInScreen()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const CheckInScreen()),
+        );
         break;
     }
   }
@@ -88,32 +94,36 @@ class _HomeScreenState extends State<HomeScreen> {
               }
 
               final today = DateTime.now();
-              final todayMeetings = meetingState.meetings.where((meeting) {
-                return meeting.dateTime.year == today.year &&
-                    meeting.dateTime.month == today.month &&
-                    meeting.dateTime.day == today.day &&
-                    meeting.groupId == currentUser.groupId;
-              }).toList()
-                ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+              final todayMeetings =
+                  meetingState.meetings.where((meeting) {
+                      return meeting.dateTime.year == today.year &&
+                          meeting.dateTime.month == today.month &&
+                          meeting.dateTime.day == today.day &&
+                          meeting.groupId == currentUser.groupId;
+                    }).toList()
+                    ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
               return Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: todayMeetings.isEmpty
-                    ? const Center(child: Text('Nenhuma reunião para hoje.'))
-                    : ListView.builder(
-                  itemCount: todayMeetings.length,
-                  itemBuilder: (context, index) {
-                    final meeting = todayMeetings[index];
-                    return Card(
-                      child: ListTile(
-                        title: Text(meeting.title),
-                        subtitle: Text(
-                          DateFormat('HH:mm').format(meeting.dateTime),
+                child:
+                    todayMeetings.isEmpty
+                        ? const Center(
+                          child: Text('Nenhuma reunião para hoje.'),
+                        )
+                        : ListView.builder(
+                          itemCount: todayMeetings.length,
+                          itemBuilder: (context, index) {
+                            final meeting = todayMeetings[index];
+                            return Card(
+                              child: ListTile(
+                                title: Text(meeting.title),
+                                subtitle: Text(
+                                  DateFormat('HH:mm').format(meeting.dateTime),
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                      ),
-                    );
-                  },
-                ),
               );
             },
           ),

@@ -1,15 +1,15 @@
 class User {
-  final int id; // ID do Supabase (int8)
+  final String id;
   final String email;
   final String name;
-  final int? groupId;
+  final List<int>? groupId;
   final int points;
 
   User({
     required this.id,
     required this.email,
     required this.name,
-    this.groupId,
+    this.groupId = null,
     this.points = 0,
   });
 

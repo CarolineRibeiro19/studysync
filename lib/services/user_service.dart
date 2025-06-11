@@ -55,15 +55,22 @@ class UserService {
       );
 
       final user = response.user;
-      if (user == null) return false;
 
+      if (user == null) return false;
+      final userId = user.id;
+      print(userId);
       await supabase.from('profiles').insert({
-        'id': user.id,
+        'id': userId,
         'name': name,
         'email': email,
         'points': 0,
-        'group_id': null,
+        'group_id': [],
       });
+
+      await supabase.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
 
       return true;
     } catch (e) {

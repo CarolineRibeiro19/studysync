@@ -26,10 +26,7 @@ class UserBloc extends Bloc<UserEvent, UserState> {
     }
   }
 
-  Future<void> _onLoginUser(
-    LoginUser event,
-    Emitter<UserState> emit,
-  ) async {
+  Future<void> _onLoginUser(LoginUser event, Emitter<UserState> emit) async {
     emit(UserLoading());
     final success = await userService.loginUser(event.email, event.password);
     if (success) {
@@ -62,10 +59,7 @@ class UserBloc extends Bloc<UserEvent, UserState> {
     emit(UserError('Registration failed.'));
   }
 
-  Future<void> _onLogoutUser(
-    LogoutUser event,
-    Emitter<UserState> emit,
-  ) async {
+  Future<void> _onLogoutUser(LogoutUser event, Emitter<UserState> emit) async {
     await userService.signOutUser();
     emit(UserUnauthenticated());
   }
