@@ -44,7 +44,7 @@ class _GroupScreenState extends State<GroupScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              final joined = await _groupService.joinGroupById(controller.text.trim());
+              final joined = await _groupService.joinGroupByInviteCode(controller.text.trim());
               if (joined) {
                 _loadGroups();
               } else {
