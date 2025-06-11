@@ -115,7 +115,7 @@ class CheckInScreen extends StatelessWidget {
                               .updateAttendance(meeting.id, true);
 
                           // Recarrega reuniões
-                          context.read<MeetingBloc>().add(LoadMeetings());
+                          context.read<MeetingBloc>().add(LoadMeetings(currentUser.groupId ?? []));
 
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(

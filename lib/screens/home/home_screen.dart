@@ -94,14 +94,18 @@ class _HomeScreenState extends State<HomeScreen> {
               }
 
               final today = DateTime.now();
-              final todayMeetings =
-                  meetingState.meetings.where((meeting) {
-                      return meeting.dateTime.year == today.year &&
-                          meeting.dateTime.month == today.month &&
-                          meeting.dateTime.day == today.day &&
-                          meeting.groupId == currentUser.groupId;
-                    }).toList()
-                    ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
+              final todayMeetings = meetingState.meetings.where((meeting) {
+              final isSameDay =
+                    meeting.dateTime.year == today.year &&
+                    meeting.dateTime.month == today.month &&
+                    meeting.dateTime.day == today.day;
+
+                final isInUserGroups = currentUser.groupId?.contains(meeting.groupId) ?? false;
+
+                return isSameDay && isInUserGroups;
+              }).toList()
+                ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
               return Padding(
                 padding: const EdgeInsets.all(16.0),

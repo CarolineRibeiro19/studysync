@@ -25,7 +25,7 @@ class AppEntryPoint extends StatelessWidget {
         ),
         BlocProvider(
           create: (_) => MeetingBloc(
-              meetingService: MeetingService(supabase))..add(LoadMeetings()),
+              meetingService: MeetingService(supabase)),
         ),
       ],
       child: child,

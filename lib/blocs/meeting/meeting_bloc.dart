@@ -13,10 +13,12 @@ class MeetingBloc extends Bloc<MeetingEvent, MeetingState> {
   }
 
   Future<void> _onLoadMeetings(
-      LoadMeetings event, Emitter<MeetingState> emit) async {
+    LoadMeetings event,
+    Emitter<MeetingState> emit,
+  ) async {
     emit(MeetingLoading());
     try {
-      final meetings = await meetingService.fetchMeetings();
+      final meetings = await meetingService.fetchMeetings(event.groupIds);
       emit(MeetingLoaded(meetings));
     } catch (e) {
       emit(MeetingError('Erro ao carregar reuniões: $e'));
@@ -24,10 +26,14 @@ class MeetingBloc extends Bloc<MeetingEvent, MeetingState> {
   }
 
   Future<void> _onAddMeeting(
-      AddMeeting event, Emitter<MeetingState> emit) async {
+    AddMeeting event,
+    Emitter<MeetingState> emit,
+  ) async {
     try {
       await meetingService.addMeeting(event.meeting);
-      final meetings = await meetingService.fetchMeetings();
+
+      // Fetch again using groupId from added meeting
+      final meetings = await meetingService.fetchMeetings([event.meeting.groupId]);
       emit(MeetingLoaded(meetings));
     } catch (e) {
       emit(MeetingError('Erro ao adicionar reunião: $e'));
@@ -35,12 +41,19 @@ class MeetingBloc extends Bloc<MeetingEvent, MeetingState> {
   }
 
   Future<void> _onMarkAttendance(
-      MarkAttendance event, Emitter<MeetingState> emit) async {
+    MarkAttendance event,
+    Emitter<MeetingState> emit,
+  ) async {
     if (state is! MeetingLoaded) return;
 
     try {
       await meetingService.updateAttendance(event.meetingId, true);
-      final meetings = await meetingService.fetchMeetings();
+
+      // Get groupIds from current loaded meetings
+      final currentState = state as MeetingLoaded;
+      final groupIds = currentState.meetings.map((m) => m.groupId).toSet().toList();
+      final meetings = await meetingService.fetchMeetings(groupIds);
+
       emit(MeetingLoaded(meetings));
     } catch (e) {
       emit(MeetingError('Erro ao marcar presença: $e'));

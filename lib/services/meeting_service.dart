@@ -1,13 +1,16 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/meeting.dart';
+import '../../models/meeting.dart';
 
 class MeetingService {
   final SupabaseClient supabase;
 
   MeetingService(this.supabase);
 
-  Future<List<Meeting>> fetchMeetings() async {
-    final response = await supabase.from('meetings').select();
+  Future<List<Meeting>> fetchMeetings(List<dynamic> groupIds) async {
+    final response = await supabase
+        .from('meetings')
+        .select()
+        .in_('group_id', groupIds);
 
     return (response as List).map((e) => Meeting.fromMap(e)).toList();
   }

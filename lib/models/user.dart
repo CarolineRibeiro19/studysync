@@ -2,7 +2,7 @@ class User {
   final String id;
   final String email;
   final String name;
-  final List<int>? groupId;
+  final List<dynamic>? groupId;
   final int points;
 
   User({
@@ -14,14 +14,15 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
-    return User(
-      id: json['id'],
-      email: json['email'] ?? '',
-      name: json['name'] ?? '',
-      groupId: json['group_id'],
-      points: json['points'] ?? 0,
-    );
-  }
+  return User(
+    id: json['id'],
+    email: json['email'] ?? '',
+    name: json['name'] ?? '',
+    groupId: (json['group_id'] as List?)?.map((e) => e ).toList(),
+    points: json['points'] ?? 0,
+  );
+}
+
 
   Map<String, dynamic> toJson() {
     return {
