@@ -1,31 +1,44 @@
 class Group {
-  final int id;
+  final String id;
   final String name;
-  final List<int> members;
-  final int createdBy;
+  final String subject;
+  final List<String> members;
 
   Group({
     required this.id,
     required this.name,
-    required this.members,
-    required this.createdBy,
+    required this.subject,
+    this.members = const [],
   });
 
-  factory Group.fromJson(Map<String, dynamic> json) {
+  factory Group.fromMap(Map<String, dynamic> map) {
     return Group(
-      id: json['id'],
-      name: json['name'],
-      members: List<int>.from(json['members'] ?? []),
-      createdBy: json['created_by'],
+      id: map['id'],
+      name: map['name'],
+      subject: map['subject'],
+      members: [], // será preenchido depois se necessário
     );
   }
 
-  Map<String, dynamic> toJson() {
+  Group copyWith({
+    String? id,
+    String? name,
+    String? subject,
+    List<String>? members,
+  }) {
+    return Group(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      subject: subject ?? this.subject,
+      members: members ?? this.members,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
     return {
       'id': id,
       'name': name,
-      'members': members,
-      'created_by': createdBy,
+      'subject': subject,
     };
   }
 }

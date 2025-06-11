@@ -2,43 +2,74 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/group.dart';
 
 class GroupService {
-  final SupabaseClient supabase;
+  final SupabaseClient supabase = Supabase.instance.client;
 
-  GroupService(this.supabase);
+  /// Busca todos os grupos do usuário atual
+  Future<List<Group>> fetchUserGroups() async {
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return [];
 
-  Future<List<Group>> fetchGroups() async {
-    final response = await supabase.from('groups').select();
-    return (response as List).map((json) => Group.fromJson(json)).toList();
+    final response = await supabase
+        .from('group_members')
+        .select('groups(id, name, subject), profiles(name)')
+        .eq('user_id', userId);
+
+    return (response as List)
+        .map((e) => Group(
+      id: e['groups']['id'],
+      name: e['groups']['name'],
+      subject: e['groups']['subject'],
+      members: [e['profiles']['name'] ?? 'Sem nome'],
+    ))
+        .toList();
   }
 
-  Future<void> createGroup(String name, int createdBy) async {
-    await supabase.from('groups').insert({
-      'name': name,
-      'created_by': createdBy,
-      'members': [createdBy],
-    });
-  }
 
-  Future<void> joinGroup(int groupId, int userId) async {
-    final groupData = await supabase
+  /// Cria um novo grupo e adiciona o usuário como membro
+  Future<bool> createGroup({required String name, required String subject}) async {
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return false;
+
+    final insertResponse = await supabase
         .from('groups')
+        .insert({
+      'name': name,
+      'subject': subject,
+      'created_by': userId,
+    })
         .select()
-        .eq('id', groupId)
         .single();
 
-    final currentMembers = List<int>.from(groupData['members']);
-    if (!currentMembers.contains(userId)) {
-      currentMembers.add(userId);
+    final groupId = insertResponse['id'] as String;
 
-      await supabase
-          .from('groups')
-          .update({'members': currentMembers})
-          .eq('id', groupId);
-    }
+    await supabase.from('group_members').insert({
+      'user_id': userId,
+      'group_id': groupId,
+    });
 
-    await supabase
-        .from('profiles')
-        .update({'group_id': groupId})
-        .eq('id', userId);
+    return true;
+  }
+
+  /// Entrar em grupo existente
+  Future<bool> joinGroupById(String groupIdText) async {
+    final userId = supabase.auth.currentUser?.id;
+    final groupId = groupIdText;
+    if (userId == null || groupId == null) return false;
+
+    final existing = await supabase
+        .from('group_members')
+        .select()
+        .eq('user_id', userId)
+        .eq('group_id', groupId)
+        .maybeSingle();
+
+    if (existing != null) return false;
+
+    await supabase.from('group_members').insert({
+      'user_id': userId,
+      'group_id': groupId,
+    });
+
+    return true;
   }
 }
