@@ -1,22 +1,11 @@
-import 'package:equatable/equatable.dart';
 import '../../models/meeting.dart';
+import 'package:equatable/equatable.dart';
 
 abstract class MeetingEvent extends Equatable {
   const MeetingEvent();
 
   @override
   List<Object?> get props => [];
-}
-
-class LoadMeetings extends MeetingEvent {}
-
-class AddMeeting extends MeetingEvent {
-  final Meeting meeting;
-
-  const AddMeeting(this.meeting);
-
-  @override
-  List<Object?> get props => [meeting];
 }
 
 class LoadGroupMeetings extends MeetingEvent {
@@ -27,3 +16,14 @@ class LoadGroupMeetings extends MeetingEvent {
   @override
   List<Object?> get props => [groupId];
 }
+
+class AddMeeting extends MeetingEvent {
+  final Meeting meeting;
+
+  const AddMeeting(this.meeting);
+
+  @override
+  List<Object?> get props => [meeting];
+}
+
+class LoadMeetings extends MeetingEvent {}

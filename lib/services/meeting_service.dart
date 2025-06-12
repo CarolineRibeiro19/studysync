@@ -3,50 +3,74 @@ import '../models/meeting.dart';
 
 class MeetingService {
   final SupabaseClient supabase;
-
   MeetingService(this.supabase);
 
   Future<List<Meeting>> fetchTodaysMeetings() async {
     final userId = supabase.auth.currentUser?.id;
-    if (userId == null) return [];
+    if (userId == null) {
+      print('User not authenticated. Cannot fetch today\'s meetings.');
+      return [];
+    }
 
     final today = DateTime.now();
     final startOfDay = DateTime(today.year, today.month, today.day);
     final endOfDay = startOfDay.add(const Duration(days: 1)).subtract(const Duration(seconds: 1));
 
-    final response = await supabase
-        .from('meetings')
-        .select()
-        .gte('date_time', startOfDay.toIso8601String())
-        .lte('date_time', endOfDay.toIso8601String());
+    try {
+      final List<dynamic> response = await supabase
+          .from('meetings')
+          .select('*')
+          .gte('date_time', startOfDay.toIso8601String())
+          .lte('date_time', endOfDay.toIso8601String())
+          .order('date_time', ascending: true);
 
-    return (response as List).map((e) => Meeting.fromMap(e)).toList();
+      return response.map((json) => Meeting.fromJson(json)).toList();
+    } catch (e) {
+      print('Error fetching today\'s meetings: $e');
+      rethrow;
+    }
   }
 
   Future<List<Meeting>> fetchGroupMeetings(String groupId) async {
-    final response = await supabase
-        .from('meetings')
-        .select()
-        .eq('group_id', groupId)
-        .order('date_time', ascending: true);
+    try {
+      final List<dynamic> response = await supabase
+          .from('meetings')
+          .select('*')
+          .eq('group_id', groupId)
+          .order('date_time', ascending: true);
 
-    return (response as List).map((e) => Meeting.fromMap(e)).toList();
+      return response.map((json) => Meeting.fromJson(json)).toList();
+    } catch (e) {
+      print('Error fetching group meetings: $e');
+      rethrow;
+    }
   }
 
   Future<void> addMeeting(Meeting meeting) async {
-    await supabase.from('meetings').insert({
-      'title': meeting.title,
-      'date_time': meeting.dateTime.toIso8601String(),
-      'group_id': meeting.groupId,
-      'attended': meeting.attended,
-      'location': meeting.location,
-    });
+    try {
+      await supabase.from('meetings').insert({
+        'title': meeting.title,
+        'date_time': meeting.dateTime.toIso8601String(),
+        'group_id': meeting.groupId,
+        'location': meeting.location,
+        'lat': meeting.lat, // Added lat
+        'long': meeting.long, // Added long
+      });
+    } catch (e) {
+      print('Error adding meeting: $e');
+      rethrow;
+    }
   }
 
   Future<void> updateAttendance(String meetingId, bool attended) async {
-    await supabase
-        .from('meetings')
-        .update({'attended': attended})
-        .eq('id', meetingId);
+    try {
+      await supabase
+          .from('meetings')
+          .update({'attended': attended})
+          .eq('id', meetingId);
+    } catch (e) {
+      print('Error updating attendance: $e');
+      rethrow;
+    }
   }
 }

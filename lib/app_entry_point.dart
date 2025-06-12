@@ -5,8 +5,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'blocs/user/user_bloc.dart';
 import 'blocs/user/user_event.dart';
 import 'blocs/meeting/meeting_bloc.dart';
-import 'blocs/meeting/meeting_event.dart';
 import 'services/meeting_service.dart';
+import 'blocs/checkin/check_in_bloc.dart';
+import 'services/check_in_service.dart';
 
 class AppEntryPoint extends StatelessWidget {
   final Widget child;
@@ -26,6 +27,11 @@ class AppEntryPoint extends StatelessWidget {
         BlocProvider(
           create: (_) => MeetingBloc(
               meetingService: MeetingService(supabase)),
+        ),
+        BlocProvider<CheckInBloc>(
+          create: (context) => CheckInBloc(
+            checkInService: CheckInService(supabase),
+          ),
         ),
       ],
       child: child,

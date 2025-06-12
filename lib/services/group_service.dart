@@ -10,20 +10,20 @@ class GroupService {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return [];
 
-    // 1. Buscar os grupos do usuário
+
     final memberResponse = await supabase
         .from('group_members')
         .select('group_id, groups(id, name, subject)')
         .eq('user_id', userId);
 
-    // 2. Para cada grupo, buscar os membros
+
     List<Group> result = [];
 
     for (var entry in memberResponse as List) {
       final groupData = entry['groups'];
       final groupId = groupData['id'];
 
-      // Buscar os membros desse grupo
+
       final membersRes = await supabase
           .from('group_members')
           .select('profiles(name)')
@@ -45,14 +45,13 @@ class GroupService {
     return result;
   }
 
-  /// Gera código aleatório de convite
+
   String _generateCode(int length) {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     final rand = Random.secure();
     return List.generate(length, (_) => chars[rand.nextInt(chars.length)]).join();
   }
 
-  /// Cria um novo grupo e gera um código de convite
   Future<bool> createGroup({
     required String name,
     required String subject,
@@ -82,7 +81,7 @@ class GroupService {
         .update({'group_id': updatedGroupIds})
         .eq('id', userId);
 
-    // Adiciona criador como membro
+
     await supabase.from('group_members').insert({
       'user_id': userId,
       'group_id': groupId,
@@ -99,7 +98,7 @@ class GroupService {
     return true;
   }
 
-  /// Entra em grupo usando ID diretamente (não recomendado se for usar código)
+
   Future<bool> joinGroupById(String groupId) async {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null || groupId.isEmpty) return false;
@@ -121,7 +120,7 @@ class GroupService {
     return true;
   }
 
-  /// Entra em grupo usando código de convite
+
   Future<bool> joinGroupByInviteCode(String code) async {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null || code.isEmpty) return false;
@@ -152,7 +151,7 @@ class GroupService {
 
     return true;
   }
-  /// Busca o código de convite de um grupo
+
   Future<String?> fetchInviteCode(String groupId) async {
     final response = await supabase
         .from('group_invites')

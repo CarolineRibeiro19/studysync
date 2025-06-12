@@ -32,8 +32,10 @@ dependencies:
     sdk: flutter
   path_provider: ^2.0.15
   supabase_flutter: ^1.10.17
-  geolocator: ^10.1.0
-  geocoding: ^2.1.0
+  flutter_map: ^8.1.1
+  geolocator: ^12.0.0 
+  geocoding: ^3.0.0
+  latlong2: ^0.9.1
 
   # Hive (persistência local)
   hive: ^2.2.3
@@ -54,6 +56,8 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  flutter_map_cancellable_tile_provider: ^3.1.0
+  sensors_plus: ^6.1.1
 
 dev_dependencies:
   flutter_test:

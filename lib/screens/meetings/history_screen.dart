@@ -42,8 +42,8 @@ class HistoryScreen extends StatelessWidget {
                   itemCount: pastMeetings.length,
                   itemBuilder: (context, index) {
                     final m = pastMeetings[index];
-                    final status = m.attended ? 'Compareceu' : 'Faltou';
-                    final color = m.attended ? Colors.green[50] : Colors.red[50];
+                    final status = false ? 'Compareceu' : 'Faltou';
+                    final color = false ? Colors.green[50] : Colors.red[50];
 
                     return Card(
                       color: color,

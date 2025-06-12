@@ -3,13 +3,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
-import 'package:studysync/blocs/meeting/meeting_bloc.dart';
-import 'package:studysync/blocs/meeting/meeting_event.dart';
-import 'package:studysync/blocs/meeting/meeting_state.dart';
-import 'package:studysync/models/group.dart';
-import 'package:studysync/models/meeting.dart';
+import '../../blocs/meeting/meeting_event.dart';
+import '../../blocs/meeting/meeting_bloc.dart';
+import '../../blocs/meeting/meeting_state.dart';
+import '../../models/group.dart';
+import '../../models/meeting.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter/services.dart'; // Import for Clipboard
+import 'package:flutter/services.dart'; 
+import 'package:latlong2/latlong.dart';
+import 'meeting_map_picker.dart';
 
 class GroupDetailScreen extends StatefulWidget {
   final Group group;
@@ -21,17 +23,16 @@ class GroupDetailScreen extends StatefulWidget {
 }
 
 class _GroupDetailScreenState extends State<GroupDetailScreen> {
-  String? inviteCode; // Stores the group's invite code.
+  String? inviteCode;
 
   @override
   void initState() {
     super.initState();
-    // Load meetings for the current group using the MeetingBloc.
+
     context.read<MeetingBloc>().add(LoadGroupMeetings(widget.group.id));
-    _loadInviteCode(); // Load the invite code for the group.
+    _loadInviteCode();
   }
 
-  // Fetches the invite code for the current group from Supabase.
   Future<void> _loadInviteCode() async {
     try {
       final response = await Supabase.instance.client
@@ -42,11 +43,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
       if (response != null && mounted) {
         setState(() {
-          inviteCode = response['code']; // Update the invite code.
+          inviteCode = response['code'];
         });
       }
     } catch (e) {
-      // Handle potential errors during invite code loading.
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erro ao carregar código de convite: $e')),
@@ -55,46 +55,79 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     }
   }
 
-  // Copies the invite code to the clipboard and shows a confirmation.
   void _copyInviteCode() {
     if (inviteCode != null) {
-      Clipboard.setData(ClipboardData(text: inviteCode!)); // Copy to clipboard.
+      Clipboard.setData(ClipboardData(text: inviteCode!));
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Código de convite copiado!')), // Confirmation message.
+        const SnackBar(content: Text('Código de convite copiado!')),
       );
     }
   }
 
-  // Shows a dialog to schedule a new meeting.
+  Future<String> _getAddressFromLatLng(double latitude, double longitude) async {
+    try {
+      final placemarks = await placemarkFromCoordinates(latitude, longitude);
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        return '${place.street}, ${place.subLocality ?? place.locality ?? place.administrativeArea ?? ''} - ${place.administrativeArea ?? ''}';
+      }
+      return 'Localização desconhecida'; 
+    } catch (e) {
+      print('Error in _getAddressFromLatLng: $e');
+      return 'Localização não disponível';
+    }
+  }
+
   Future<void> _marcarReuniao(BuildContext context) async {
     final titleController = TextEditingController();
     final locationController = TextEditingController();
-    final timeController = TextEditingController(); // New controller for time input
-    TimeOfDay? selectedTime; // To store the selected time.
+    final timeController = TextEditingController();
+    final latController = TextEditingController();
+    final longController = TextEditingController();
+    TimeOfDay? selectedTime;
 
-    // Try to get current location automatically.
+
+    LatLng? initialMapLocation;
+
     try {
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          throw 'Permissão de localização negada.';
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                  content: Text('Permissão de localização negada.')),
+            );
+          }
+          
         }
       }
       if (permission == LocationPermission.deniedForever) {
-        throw 'Permissão de localização permanentemente negada. Habilite nas configurações do app.';
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text(
+                    'Permissão de localização permanentemente negada. Habilite nas configurações do app.')),
+          );
+        }
       }
 
-      final position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
-      final placemarks = await placemarkFromCoordinates(
-          position.latitude, position.longitude);
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
+        final position = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high);
 
-      final place = placemarks.first;
-      locationController.text =
-          '${place.street}, ${place.subLocality}, ${place.locality} - ${place.administrativeArea}';
+        final address = await _getAddressFromLatLng(position.latitude, position.longitude);
+        locationController.text = address;
+        latController.text = position.latitude.toString();
+        longController.text = position.longitude.toString();
+        initialMapLocation = LatLng(position.latitude, position.longitude);
+      }
     } catch (e) {
-      locationController.text = 'Localização indisponível';
+      locationController.text = '';
+      latController.text = '';
+      longController.text = '';
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erro ao obter localização: $e')),
@@ -102,12 +135,12 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       }
     }
 
-    // Show the dialog for new meeting.
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text('Nova Reunião', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Nova Reunião',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -117,32 +150,34 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                 decoration: InputDecoration(
                   labelText: 'Título da Reunião',
                   hintText: 'Ex: Estudo para a prova',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10)),
                   prefixIcon: const Icon(Icons.title),
                 ),
               ),
               const SizedBox(height: 15),
               GestureDetector(
                 onTap: () async {
-                  // Show time picker when tapping on the time field.
                   final pickedTime = await showTimePicker(
                     context: dialogContext,
                     initialTime: TimeOfDay.now(),
                   );
                   if (pickedTime != null) {
-                    setState(() { // setState on the parent widget to trigger rebuild of this dialog part
-                      selectedTime = pickedTime; // Update selected time.
-                      timeController.text = selectedTime!.format(context); // Update the text field
-                    });
+
+                    (dialogContext as Element)
+                        .markNeedsBuild(); 
+                    selectedTime = pickedTime;
+                    timeController.text = selectedTime!.format(context);
                   }
                 },
                 child: AbsorbPointer(
                   child: TextField(
-                    controller: timeController, // Use the new timeController
+                    controller: timeController,
                     decoration: InputDecoration(
                       labelText: 'Horário',
                       hintText: 'Selecione o horário',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
                       prefixIcon: const Icon(Icons.access_time),
                     ),
                   ),
@@ -152,11 +187,73 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
               TextField(
                 controller: locationController,
                 decoration: InputDecoration(
-                  labelText: 'Localização',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  labelText: 'Localização (Descrição)',
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10)),
                   prefixIcon: const Icon(Icons.location_on),
                 ),
-                readOnly: false, // Allow manual editing if auto-detection fails.
+              ),
+              const SizedBox(height: 15),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: latController,
+                      readOnly: true,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Latitude',
+                        hintText: 'Ex: 38.7223',
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        prefixIcon: const Icon(Icons.map),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: longController,
+                      readOnly: true,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Longitude',
+                        hintText: 'Ex: -9.1393',
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        prefixIcon: const Icon(Icons.map),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 15),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    final LatLng? pickedLatLng = await Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (ctx) => MeetingMapPicker(initialLocation: initialMapLocation),
+                      ),
+                    );
+
+                    if (pickedLatLng != null) {
+                      latController.text = pickedLatLng.latitude.toString();
+                      longController.text = pickedLatLng.longitude.toString();
+
+                      (dialogContext as Element).markNeedsBuild();
+                    }
+                  },
+                  icon: const Icon(Icons.map_outlined),
+                  label: const Text('Selecionar no Mapa'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.secondary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
               ),
             ],
           ),
@@ -168,28 +265,59 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              if (titleController.text.trim().isEmpty || selectedTime == null || locationController.text.trim().isEmpty) {
+              if (titleController.text.trim().isEmpty ||
+                  selectedTime == null ||
+                  locationController.text.trim().isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Por favor, preencha todos os campos e selecione um horário.')),
+                  const SnackBar(
+                      content: Text(
+                          'Por favor, preencha todos os campos e selecione um horário.')),
                 );
                 return;
               }
 
-              Navigator.pop(dialogContext); // Close dialog.
+              double? lat;
+              double? long;
+              try {
+                if (latController.text.isNotEmpty) {
+                  lat = double.tryParse(latController.text);
+                  if (lat == null) {
+                    throw const FormatException('Latitude inválida');
+                  }
+                }
+                if (longController.text.isNotEmpty) {
+                  long = double.tryParse(longController.text);
+                  if (long == null) {
+                    throw const FormatException('Longitude inválida');
+                  }
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text('Erro de formato nas coordenadas: $e')),
+                  );
+                }
+                return;
+              }
+
+              Navigator.pop(dialogContext); 
 
               final now = DateTime.now();
-              final dateTime = DateTime(
-                  now.year, now.month, now.day, selectedTime!.hour, selectedTime!.minute);
+              final dateTime = DateTime(now.year, now.month, now.day,
+                  selectedTime!.hour, selectedTime!.minute);
 
               final newMeeting = Meeting(
-                id: DateTime.now().millisecondsSinceEpoch.toString(), // Generate a unique ID.
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
                 title: titleController.text.trim(),
                 dateTime: dateTime,
                 location: locationController.text.trim(),
                 groupId: widget.group.id,
+                lat: lat,
+                long: long,
               );
 
-              context.read<MeetingBloc>().add(AddMeeting(newMeeting)); // Dispatch add meeting event.
+              context.read<MeetingBloc>().add(AddMeeting(newMeeting));
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Reunião agendada com sucesso!')),
               );
@@ -214,15 +342,16 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     return Scaffold(
       backgroundColor: theme.primaryColor.withOpacity(0.05),
       appBar: AppBar(
-        title: Text(group.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title:
+            Text(group.name, style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         elevation: 0,
         actions: [
-          // Refresh button to reload meetings
           IconButton(
             icon: const Icon(Icons.refresh, size: 28),
             tooltip: 'Atualizar Reuniões',
-            onPressed: () => context.read<MeetingBloc>().add(LoadGroupMeetings(widget.group.id)),
+            onPressed: () =>
+                context.read<MeetingBloc>().add(LoadGroupMeetings(widget.group.id)),
           ),
           const SizedBox(width: 8),
         ],
@@ -232,7 +361,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Group Subject Card
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -243,26 +371,26 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                   children: [
                     Text(
                       'Matéria:',
-                      style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                      style:
+                          theme.textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       group.subject,
-                      style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                      style: theme.textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 20),
-
-            // Invite Code Card (conditionally displayed)
             if (inviteCode != null)
               Card(
                 elevation: 4,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                 child: InkWell(
-                  onTap: _copyInviteCode, // Tap to copy invite code.
+                  onTap: _copyInviteCode,
                   borderRadius: BorderRadius.circular(15),
                   child: Padding(
                     padding: const EdgeInsets.all(20),
@@ -274,13 +402,15 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                           children: [
                             Text(
                               'Código de Convite:',
-                              style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                              style: theme.textTheme.bodySmall
+                                  ?.copyWith(color: Colors.grey[600]),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               inviteCode!,
                               style: theme.textTheme.headlineSmall?.copyWith(
-                                  color: theme.primaryColor, fontWeight: FontWeight.bold),
+                                  color: theme.primaryColor,
+                                  fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -291,8 +421,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                 ),
               ),
             if (inviteCode != null) const SizedBox(height: 20),
-
-            // Members List Card
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -303,33 +431,36 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                   children: [
                     Text(
                       'Membros (${group.members.length}):',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 10),
-                    // Display members in a wrapped flow layout for better readability.
                     Wrap(
-                      spacing: 8.0, // horizontal space between items
-                      runSpacing: 8.0, // vertical space between lines
-                      children: group.members.map((member) => Chip(
-                            label: Text(member, style: const TextStyle(color: Colors.white)),
-                            backgroundColor: theme.colorScheme.primary,
-                            avatar: const Icon(Icons.person, color: Colors.white, size: 18),
-                          )).toList(),
+                      spacing: 8.0,
+                      runSpacing: 8.0,
+                      children: group.members
+                          .map((member) => Chip(
+                                label: Text(member,
+                                    style: const TextStyle(color: Colors.white)),
+                                backgroundColor: theme.colorScheme.primary,
+                                avatar: const Icon(Icons.person,
+                                    color: Colors.white, size: 18),
+                              ))
+                          .toList(),
                     ),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 20),
-
-            // Meetings Section
             Text(
               'Próximas Reuniões:',
-              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: Colors.blueGrey[800]),
+              style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold, color: Colors.blueGrey[800]),
             ),
             const SizedBox(height: 15),
             Container(
-              constraints: const BoxConstraints(minHeight: 150), // Minimum height for the meeting list.
+              constraints: const BoxConstraints(minHeight: 150),
               child: BlocBuilder<MeetingBloc, MeetingState>(
                 builder: (context, state) {
                   if (state is MeetingLoading) {
@@ -338,23 +469,26 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                     final groupMeetings = state.meetings
                         .where((m) => m.groupId == group.id)
                         .toList()
-                        ..sort((a, b) => a.dateTime.compareTo(b.dateTime)); // Sort meetings by date/time.
+                        ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
                     if (groupMeetings.isEmpty) {
                       return Center(
                         child: Column(
                           children: [
-                            Icon(Icons.calendar_today_outlined, size: 60, color: Colors.grey[400]),
+                            Icon(Icons.calendar_today_outlined,
+                                size: 60, color: Colors.grey[400]),
                             const SizedBox(height: 10),
                             Text(
                               'Nenhuma reunião agendada ainda.',
-                              style: theme.textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+                              style: theme.textTheme.titleMedium
+                                  ?.copyWith(color: Colors.grey[600]),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 5),
                             Text(
                               'Toque no botão abaixo para criar uma!',
-                              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+                              style: theme.textTheme.bodyMedium
+                                  ?.copyWith(color: Colors.grey[500]),
                               textAlign: TextAlign.center,
                             ),
                           ],
@@ -362,34 +496,40 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                       );
                     }
                     return ListView.builder(
-                      shrinkWrap: true, // Use shrinkWrap to prevent unbounded height errors inside SingleChildScrollView.
-                      physics: const NeverScrollableScrollPhysics(), // Disable internal scrolling.
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
                       itemCount: groupMeetings.length,
                       itemBuilder: (_, index) {
                         final m = groupMeetings[index];
                         return Card(
                           margin: const EdgeInsets.only(bottom: 12),
                           elevation: 2,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                           child: ListTile(
                             leading: CircleAvatar(
                               backgroundColor: theme.colorScheme.tertiary,
-                              child: Icon(Icons.event, color: Colors.white),
+                              child: const Icon(Icons.event, color: Colors.white),
                             ),
                             title: Text(
                               m.title,
-                              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                              style: theme.textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             subtitle: Text(
-                              '${DateFormat('dd/MM/yyyy – HH:mm').format(m.dateTime)}\n${m.location}',
-                              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
+                              '${DateFormat('dd/MM/yyyy – HH:mm').format(m.dateTime)}\n${m.location}'
+                              '${(m.lat != null && m.long != null) ? '\nLat: ${m.lat!.toStringAsFixed(4)}, Long: ${m.long!.toStringAsFixed(4)}' : ''}',
+                              style: theme.textTheme.bodyMedium
+                                  ?.copyWith(color: Colors.grey[700]),
                             ),
-                            isThreeLine: true, // Allow subtitle to take more than one line.
-                            trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
+                            isThreeLine: true,
+                            trailing: const Icon(Icons.arrow_forward_ios,
+                                size: 16, color: Colors.grey),
                             onTap: () {
                               // TODO: Implement meeting detail screen navigation.
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Detalhes da reunião: ${m.title}')),
+                                SnackBar(
+                                    content: Text('Detalhes da reunião: ${m.title}')),
                               );
                             },
                           ),
@@ -400,7 +540,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                     return Center(
                       child: Text(
                         'Erro ao carregar reuniões.',
-                        style: theme.textTheme.titleMedium?.copyWith(color: Colors.redAccent),
+                        style: theme.textTheme.titleMedium
+                            ?.copyWith(color: Colors.redAccent),
                       ),
                     );
                   }
@@ -408,8 +549,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
               ),
             ),
             const SizedBox(height: 30),
-
-            // "Marcar Reunião" Button
             Center(
               child: ElevatedButton.icon(
                 onPressed: () => _marcarReuniao(context),
@@ -418,11 +557,13 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.primaryColor,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  textStyle:
+                      const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
