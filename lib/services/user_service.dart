@@ -10,27 +10,89 @@ class UserService {
     final supaUser = supabase.auth.currentUser;
     if (supaUser == null) return null;
 
-    final response =
-        await supabase.from('profiles').select().eq('id', supaUser.id).single();
+    try {
+      final response =
+          await supabase.from('profiles').select().eq('id', supaUser.id).single();
 
-    return app_model.User(
-      id: response['id'],
-      email: supaUser.email ?? '',
-      name: response['name'] ?? '',
-      groupId: response['group_id'],
-      points: response['points'] ?? 0,
-    );
+      return app_model.User.fromJson(response); 
+    } catch (e) {
+      print('Error getting current user profile: $e');
+      return null;
+    }
   }
 
-  Future<app_model.User> updateUserProfile({
+  Future<app_model.User?> updateUserProfile({
     required String id,
-    required String name,
+    String? name,
+    List<dynamic>? groupId, 
   }) async {
-    final response = await supabase
-        .from('profiles')
-        .update({'name': name})
-        .eq('id', id);
-    return response.user;
+    final Map<String, dynamic> updates = {};
+    if (name != null) {
+      updates['name'] = name;
+    }
+    if (groupId != null) {
+      updates['group_id'] = groupId;
+    }
+
+    if (updates.isEmpty) {
+      return getCurrentUserProfile(); 
+    }
+
+    try {
+      final response = await supabase
+          .from('profiles')
+          .update(updates)
+          .eq('id', id)
+          .select() 
+          .single();
+
+      return app_model.User.fromJson(response);
+    } catch (e) {
+      print('Error updating user profile: $e');
+      return getCurrentUserProfile(); 
+    }
+  }
+
+  
+  Future<app_model.User?> updateUserGroupPoints({
+    required String userId,
+    required String groupId,
+    required int pointsToAdd,
+  }) async {
+    try {
+      
+      final currentUserData = await supabase.from('profiles').select('points, group_points').eq('id', userId).single();
+
+      final currentGroupPoints = (currentUserData['group_points'] as Map<String, dynamic>?)?.map(
+        (key, value) => MapEntry(key, value as int),
+      ) ?? {};
+      final currentTotalPoints = currentUserData['points'] as int? ?? 0;
+
+      
+      final Map<String, int> updatedGroupPoints = Map.from(currentGroupPoints); 
+      updatedGroupPoints[groupId] = (updatedGroupPoints[groupId] ?? 0) + pointsToAdd;
+
+      
+      
+      final newTotalPoints = updatedGroupPoints.values.fold(currentTotalPoints, (sum, element) => sum + element);
+
+
+      
+      final response = await supabase
+          .from('profiles')
+          .update({
+            'points': newTotalPoints,
+            'group_points': updatedGroupPoints, 
+          })
+          .eq('id', userId)
+          .select() 
+          .single();
+
+      return app_model.User.fromJson(response);
+    } catch (e) {
+      print('Error updating user group points: $e');
+      return null;
+    }
   }
 
   Future<bool> loginUser(String email, String password) async {
@@ -39,7 +101,6 @@ class UserService {
         email: email,
         password: password,
       );
-
       return response.user != null;
     } catch (e) {
       print('Erro ao fazer login: $e');
@@ -56,21 +117,23 @@ class UserService {
 
       final user = response.user;
 
-      if (user == null) return false;
+      if (user == null) {
+        if (response.session == null) {
+            print('Sign-up failed, no session created.');
+        }
+        return false;
+      }
       final userId = user.id;
-      print(userId);
+      print('New user registered with ID: $userId');
+
       await supabase.from('profiles').insert({
         'id': userId,
         'name': name,
         'email': email,
-        'points': 0,
-        'group_id': [],
+        'group_id': [], 
+        'points': 0, 
+        'group_points': {}, 
       });
-
-      await supabase.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
 
       return true;
     } catch (e) {

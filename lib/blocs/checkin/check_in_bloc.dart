@@ -7,10 +7,13 @@ import '../../services/check_in_service.dart';
 import '../../models/meeting.dart';
 import 'check_in_event.dart';
 import 'check_in_state.dart';
+import '../user/user_bloc.dart';
+import '../user/user_event.dart';
+
 
 class CheckInBloc extends Bloc<CheckInEvent, CheckInState> {
   final CheckInService checkInService;
-  
+  final UserBloc userBloc;
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   StreamSubscription<Position>? _positionSubscription;
   Meeting? _currentMeeting;
@@ -19,7 +22,7 @@ class CheckInBloc extends Bloc<CheckInEvent, CheckInState> {
   LatLng? _lastKnownPosition;
   bool _shakeDetected = false;
 
-  CheckInBloc({required this.checkInService /* removed required SupabaseClient supabase */})
+  CheckInBloc({required this.checkInService , required this.userBloc})
       : super(CheckInInitial()) {
     on<StartCheckIn>(_onStartCheckIn);
     on<AccelerometerShakeDetected>(_onAccelerometerShakeDetected);
@@ -120,10 +123,6 @@ class CheckInBloc extends Bloc<CheckInEvent, CheckInState> {
 
       emit(CheckInProcessing());
 
-      
-      
-
-      
       if (_lastKnownPosition == null) {
         try {
           final Position freshPosition = await Geolocator.getCurrentPosition(
@@ -158,6 +157,9 @@ class CheckInBloc extends Bloc<CheckInEvent, CheckInState> {
             meetingId: _currentMeeting!.id,
             attended: true,
           );
+          final String groupId = _currentMeeting!.groupId;
+
+          userBloc.add(UpdateUserGroupPoints(groupId: groupId, pointsToAdd: 200));
           emit(CheckInSuccess('Check-in realizado com sucesso!'));
         } catch (e) {
           

@@ -9,6 +9,9 @@ import 'themes//app_theme.dart';
 import 'services/meeting_service.dart';
 import 'services/user_service.dart';
 import 'app_entry_point.dart';
+import 'blocs/checkin/check_in_bloc.dart';
+import 'services/check_in_service.dart';
+import 'services/group_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,29 +30,53 @@ class StudySyncApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final supabase = Supabase.instance.client;
-    final userService = UserService(supabase);
-    final meetingService = MeetingService(supabase);
+    final supabase = Supabase.instance.client; 
 
-    return MultiBlocProvider(
+    return MultiRepositoryProvider( 
       providers: [
-        BlocProvider(
-          create:
-              (_) => UserBloc(userService: userService)..add(LoadCurrentUser()),
+        RepositoryProvider<UserService>(
+          create: (context) => UserService(supabase),
         ),
-        BlocProvider(
-          create: (_) => MeetingBloc(meetingService: meetingService),
+        RepositoryProvider<MeetingService>(
+          create: (context) => MeetingService(supabase),
+        ),
+        RepositoryProvider<CheckInService>(
+          create: (context) => CheckInService(supabase),
+        ),
+        RepositoryProvider<GroupService>( 
+          create: (context) => GroupService(),
         ),
       ],
-      child: MaterialApp(
-        title: 'StudySync',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        initialRoute: '/',
-        routes: appRoutes,
-        builder: (context, child) {
-          return AppEntryPoint(child: child!);
-        },
+      child: MultiBlocProvider( 
+        providers: [
+          BlocProvider<UserBloc>(
+            create: (context) => UserBloc(
+              userService: context.read<UserService>(), 
+            )..add(LoadCurrentUser()),
+          ),
+          BlocProvider<MeetingBloc>(
+            create: (context) => MeetingBloc(
+              meetingService: context.read<MeetingService>(), 
+            ),
+          ),
+          BlocProvider<CheckInBloc>(
+            create: (context) => CheckInBloc(
+              checkInService: context.read<CheckInService>(), 
+              userBloc: context.read<UserBloc>(), 
+            ),
+          ),
+          
+        ],
+        child: MaterialApp( 
+          title: 'StudySync',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          initialRoute: '/',
+          routes: appRoutes,
+          builder: (context, child) {
+            return AppEntryPoint(child: child!);
+          },
+        ),
       ),
     );
   }

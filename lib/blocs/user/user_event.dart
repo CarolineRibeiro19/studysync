@@ -22,9 +22,17 @@ class RegisterUser extends UserEvent {
 }
 
 class UpdateUserProfile extends UserEvent {
-  final String name;
-
+  final String name; 
   UpdateUserProfile(this.name);
 }
+
+
+class UpdateUserGroupPoints extends UserEvent {
+  final String groupId;
+  final int pointsToAdd; 
+
+  UpdateUserGroupPoints({required this.groupId, required this.pointsToAdd});
+}
+
 
 class LogoutUser extends UserEvent {}

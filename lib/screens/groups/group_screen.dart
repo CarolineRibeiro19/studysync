@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart'; 
 import 'package:studysync/models/group.dart';
 import 'package:studysync/screens/groups/group_detail_screen.dart';
 import 'package:studysync/services/group_service.dart';
+import 'package:studysync/blocs/user/user_bloc.dart'; 
+import 'package:studysync/blocs/user/user_event.dart'; 
 
 class GroupScreen extends StatefulWidget {
   const GroupScreen({super.key});
@@ -18,38 +21,38 @@ class _GroupScreenState extends State<GroupScreen> {
   @override
   void initState() {
     super.initState();
-    _loadGroups(); // Load groups when the screen initializes.
+    _loadGroups(); 
   }
 
-  // Fetches the user's groups from the service.
+  
   Future<void> _loadGroups() async {
     setState(() {
-      isLoading = true; // Set loading to true while fetching.
+      isLoading = true; 
     });
     try {
       final loadedGroups = await _groupService.fetchUserGroups();
       setState(() {
-        groups = loadedGroups; // Update the groups list.
-        isLoading = false; // Set loading to false after data is loaded.
+        groups = loadedGroups; 
+        isLoading = false; 
       });
     } catch (e) {
-      // Handle error during group loading.
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao carregar grupos: $e')),
       );
       setState(() {
-        isLoading = false; // Stop loading even if there's an error.
+        isLoading = false; 
       });
     }
   }
 
-  // Shows a dialog for joining an existing group by its ID.
+  
   void _enterGroupById(BuildContext context) {
     final controller = TextEditingController();
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)), // Rounded corners for dialog.
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)), 
         title: const Text('Entrar em Grupo', style: TextStyle(fontWeight: FontWeight.bold)),
         content: TextField(
           controller: controller,
@@ -63,12 +66,12 @@ class _GroupScreenState extends State<GroupScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext), // Close dialog.
+            onPressed: () => Navigator.pop(dialogContext), 
             child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(dialogContext); // Close dialog before performing action.
+              Navigator.pop(dialogContext); 
               if (controller.text.trim().isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Por favor, insira o ID do grupo.')),
@@ -77,7 +80,7 @@ class _GroupScreenState extends State<GroupScreen> {
               }
               final joined = await _groupService.joinGroupByInviteCode(controller.text.trim());
               if (joined) {
-                _loadGroups(); // Reload groups after successful join.
+                _loadGroups(); 
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Você entrou no grupo com sucesso!')),
                 );
@@ -99,7 +102,7 @@ class _GroupScreenState extends State<GroupScreen> {
     );
   }
 
-  // Shows a dialog for creating a new group.
+  
   void _createGroup(BuildContext context) {
     final nameController = TextEditingController();
     final subjectController = TextEditingController();
@@ -120,7 +123,7 @@ class _GroupScreenState extends State<GroupScreen> {
                 prefixIcon: const Icon(Icons.group),
               ),
             ),
-            const SizedBox(height: 15), // Spacing between text fields.
+            const SizedBox(height: 15), 
             TextField(
               controller: subjectController,
               decoration: InputDecoration(
@@ -151,9 +154,21 @@ class _GroupScreenState extends State<GroupScreen> {
                 subject: subjectController.text.trim(),
               );
               if (created) {
-                _loadGroups(); // Reload groups after successful creation.
+                
+                final currentGroups = await _groupService.fetchUserGroups();
+                final newGroup = currentGroups.firstWhere(
+                  (group) => group.name == nameController.text.trim() && group.subject == subjectController.text.trim(),
+                  orElse: () => throw Exception('Newly created group not found!'), 
+                );
+
+                
+                context.read<UserBloc>().add(
+                      UpdateUserGroupPoints(groupId: newGroup.id, pointsToAdd: 100), 
+                    );
+
+                _loadGroups(); 
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Grupo criado com sucesso!')),
+                  const SnackBar(content: Text('Grupo criado com sucesso! Você ganhou 100 pontos.')),
                 );
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -178,29 +193,29 @@ class _GroupScreenState extends State<GroupScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.primaryColor.withOpacity(0.05), // Light background.
+      backgroundColor: theme.primaryColor.withOpacity(0.05), 
       appBar: AppBar(
         title: const Text('Meus Grupos', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
-        elevation: 0, // No shadow for a modern flat look.
+        elevation: 0, 
         actions: [
-          // Button to create a new group.
+          
           IconButton(
-            icon: const Icon(Icons.group_add_outlined, size: 28), // Larger icon for better tap target.
+            icon: const Icon(Icons.group_add_outlined, size: 28), 
             tooltip: 'Criar Novo Grupo',
             onPressed: () => _createGroup(context),
           ),
-          // Button to join an existing group.
+          
           IconButton(
-            icon: const Icon(Icons.login, size: 28), // Larger icon for better tap target.
+            icon: const Icon(Icons.login, size: 28), 
             tooltip: 'Entrar em Grupo',
             onPressed: () => _enterGroupById(context),
           ),
-          const SizedBox(width: 8), // Padding at the end of actions.
+          const SizedBox(width: 8), 
         ],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator()) // Show loading indicator.
+          ? const Center(child: CircularProgressIndicator()) 
           : groups.isEmpty
               ? Center(
                   child: Padding(
@@ -209,7 +224,7 @@ class _GroupScreenState extends State<GroupScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.inbox_outlined, // Icon for empty state.
+                          Icons.inbox_outlined, 
                           size: 100,
                           color: Colors.grey[400],
                         ),
@@ -250,11 +265,11 @@ class _GroupScreenState extends State<GroupScreen> {
                     final group = groups[index];
                     return Card(
                       margin: const EdgeInsets.only(bottom: 16),
-                      elevation: 4, // Subtle shadow for cards.
+                      elevation: 4, 
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15), // More rounded corners.
+                        borderRadius: BorderRadius.circular(15), 
                       ),
-                      child: InkWell( // Use InkWell for better visual feedback on tap.
+                      child: InkWell( 
                         onTap: () {
                           Navigator.push(
                             context,
@@ -263,12 +278,12 @@ class _GroupScreenState extends State<GroupScreen> {
                             ),
                           );
                         },
-                        borderRadius: BorderRadius.circular(15), // Match card border radius.
+                        borderRadius: BorderRadius.circular(15), 
                         child: Padding(
-                          padding: const EdgeInsets.all(12.0), // Inner padding for ListTile content.
+                          padding: const EdgeInsets.all(12.0), 
                           child: Row(
                             children: [
-                              // Group icon or initial avatar.
+                              
                               CircleAvatar(
                                 backgroundColor: theme.colorScheme.secondary,
                                 child: Text(

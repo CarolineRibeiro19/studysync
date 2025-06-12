@@ -6,12 +6,12 @@ import '../../blocs/user/user_bloc.dart';
 import '../../blocs/user/user_state.dart';
 import '../../blocs/meeting/meeting_bloc.dart';
 import '../../blocs/meeting/meeting_state.dart';
-import '../../models/meeting.dart';
+import '../ranking/ranking_screen.dart';
 import '../../widgets/custom_buttom.dart';
 import '../checkin/checkin_screen.dart';
 import '../groups/group_screen.dart';
 import '../profile/profile_screen.dart';
-import '../ranking/ranking_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -38,7 +38,6 @@ class _HomeScreenState extends State<HomeScreen> {
         );
         break;
       case 1:
-        // já está na home
         break;
       case 2:
         Navigator.push(
