@@ -26,4 +26,11 @@ class AddMeeting extends MeetingEvent {
   List<Object?> get props => [meeting];
 }
 
-class LoadMeetings extends MeetingEvent {}
+class LoadMeetings extends MeetingEvent {
+  final String userId;
+
+  const LoadMeetings(this.userId);
+
+  @override
+  List<Object?> get props => [userId];
+}

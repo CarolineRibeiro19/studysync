@@ -5,50 +5,43 @@ class MeetingService {
   final SupabaseClient supabase;
   MeetingService(this.supabase);
 
-  Future<List<Meeting>> fetchTodaysMeetings() async {
-    final userId = supabase.auth.currentUser?.id;
-    if (userId == null) {
-      print('User not authenticated. Cannot fetch today\'s meetings.');
-      return [];
-    }
-
-    List<dynamic>? userGroupIds;
+  Future<List<Meeting>> fetchTodaysMeetings(String userId) async {
     try {
-      final userProfile = await supabase
-          .from('profiles')
+      // Busca os IDs dos grupos que o usuário participa
+      final groupResponse = await supabase
+          .from('group_members')
           .select('group_id')
-          .eq('id', userId)
-          .single();
-      userGroupIds = userProfile['group_id'] as List<dynamic>?;
+          .eq('user_id', userId);
 
-      if (userGroupIds == null || userGroupIds.isEmpty) {
-        print('User $userId is not part of any groups. No meetings to fetch.');
+      final groupIds = groupResponse.map((g) => g['group_id'] as String).toList();
+
+      if (groupIds.isEmpty) {
+        print('Usuário não está em nenhum grupo.');
         return [];
       }
-    } catch (e) {
-      print('Error fetching user groups for meetings: $e');
-      return [];
-    }
 
-    final today = DateTime.now();
-    final startOfDay = DateTime(today.year, today.month, today.day);
-    final endOfDay = startOfDay.add(const Duration(days: 1)).subtract(const Duration(seconds: 1));
+      // Define o intervalo de hoje
+      final today = DateTime.now();
+      final startOfDay = DateTime(today.year, today.month, today.day);
+      final endOfDay =
+      startOfDay.add(const Duration(days: 1)).subtract(const Duration(seconds: 1));
 
-    try {
-      final List<dynamic> response = await supabase
+      // Busca reuniões de hoje dos grupos que o usuário participa
+      final response = await supabase
           .from('meetings')
           .select('*')
+          .inFilter('group_id', groupIds)
           .gte('date_time', startOfDay.toIso8601String())
           .lte('date_time', endOfDay.toIso8601String())
-          .contains('group_id', userGroupIds) // Supabase 'in' filter
           .order('date_time', ascending: true);
 
       return response.map((json) => Meeting.fromJson(json)).toList();
     } catch (e) {
-      print('Error fetching today\'s meetings: $e');
-      rethrow;
+      print('Erro ao buscar reuniões do dia: $e');
+      return [];
     }
   }
+
 
   Future<List<Meeting>> fetchGroupMeetings(String groupId) async {
     try {

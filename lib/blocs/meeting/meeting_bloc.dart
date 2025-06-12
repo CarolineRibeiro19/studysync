@@ -16,12 +16,13 @@ class MeetingBloc extends Bloc<MeetingEvent, MeetingState> {
       LoadMeetings event, Emitter<MeetingState> emit) async {
     emit(MeetingLoading());
     try {
-      final meetings = await meetingService.fetchTodaysMeetings();
+      final meetings = await meetingService.fetchTodaysMeetings(event.userId);
       emit(MeetingLoaded(meetings));
     } catch (e) {
       emit(MeetingError('Falha ao carregar reuniões: $e'));
     }
   }
+
 
   Future<void> _onAddMeeting(
       AddMeeting event, Emitter<MeetingState> emit) async {
