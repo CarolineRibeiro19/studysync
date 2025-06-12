@@ -40,7 +40,7 @@ class MeetingService {
           .select('*')
           .gte('date_time', startOfDay.toIso8601String())
           .lte('date_time', endOfDay.toIso8601String())
-          .in_('group_id', userGroupIds) // Supabase 'in' filter
+          .contains('group_id', userGroupIds) // Supabase 'in' filter
           .order('date_time', ascending: true);
 
       return response.map((json) => Meeting.fromJson(json)).toList();
