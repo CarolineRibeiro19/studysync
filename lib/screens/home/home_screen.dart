@@ -38,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
         );
         break;
       case 1:
+        // This is the current screen, no navigation needed
         break;
       case 2:
         Navigator.push(
@@ -92,41 +93,38 @@ class _HomeScreenState extends State<HomeScreen> {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              final today = DateTime.now();
-
-              final todayMeetings = meetingState.meetings.where((meeting) {
-              final isSameDay =
-                    meeting.dateTime.year == today.year &&
-                    meeting.dateTime.month == today.month &&
-                    meeting.dateTime.day == today.day;
-
-                final isInUserGroups = currentUser.groupId?.contains(meeting.groupId) ?? false;
-
-                return isSameDay && isInUserGroups;
+              // Filter meetings to only include those associated with the current user's groups
+              final allUserGroupMeetings = meetingState.meetings.where((meeting) {
+                return currentUser.groupId?.contains(meeting.groupId) ?? false;
               }).toList()
-                ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+                ..sort((a, b) => a.dateTime.compareTo(b.dateTime)); // Sort all meetings by date/time
 
               return Padding(
                 padding: const EdgeInsets.all(16.0),
-                child:
-                    todayMeetings.isEmpty
-                        ? const Center(
-                          child: Text('Nenhuma reunião para hoje.'),
-                        )
-                        : ListView.builder(
-                          itemCount: todayMeetings.length,
-                          itemBuilder: (context, index) {
-                            final meeting = todayMeetings[index];
-                            return Card(
-                              child: ListTile(
-                                title: Text(meeting.title),
-                                subtitle: Text(
-                                  DateFormat('HH:mm').format(meeting.dateTime),
-                                ),
+                child: allUserGroupMeetings.isEmpty
+                    ? const Center(
+                        child: Text('Nenhuma reunião encontrada.'), // Updated message
+                      )
+                    : ListView.builder(
+                        itemCount: allUserGroupMeetings.length,
+                        itemBuilder: (context, index) {
+                          final meeting = allUserGroupMeetings[index];
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12.0), // Added margin for spacing
+                            child: ListTile(
+                              title: Text(meeting.title),
+                              subtitle: Text(
+                                // Format to show full date and time
+                                DateFormat('dd/MM/yyyy - HH:mm').format(meeting.dateTime),
                               ),
-                            );
-                          },
-                        ),
+                              // You might want to add an onTap to view meeting details
+                              // onTap: () {
+                              //   // Navigate to MeetingDetailScreen or similar
+                              // },
+                            ),
+                          );
+                        },
+                      ),
               );
             },
           ),
