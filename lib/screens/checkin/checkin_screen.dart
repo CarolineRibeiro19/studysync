@@ -87,7 +87,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                               return DropdownMenuItem<Meeting>(
                                 value: meeting,
                                 child: Text(
-                                  '${meeting.title} - ${DateFormat('dd/MM HH:mm').format(meeting.dateTime)} - ${meeting.location}',
+                                  '${meeting.title} - ${DateFormat('dd/MM HH:mm').format(meeting.dateTime)} ',
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               );

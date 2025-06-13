@@ -77,15 +77,20 @@ class MeetingService {
     }
   }
 
-  Future<void> updateAttendance(String meetingId, bool attended) async {
+  Future<void> updateAttendance(String meetingId, String userId, bool attended) async {
     try {
-      await supabase
-          .from('meetings')
-          .update({'attended': attended})
-          .eq('id', meetingId);
+      await Supabase.instance.client
+          .from('attendance')
+          .insert({
+        'meeting_id': meetingId,
+        'user_id': userId,
+        'attended': true,
+        'checkin_at': DateTime.now().toIso8601String(),
+      });
     } catch (e) {
-      print('Error updating attendance: $e');
+      print('Error upserting attendance: $e');
       rethrow;
     }
   }
+
 }
