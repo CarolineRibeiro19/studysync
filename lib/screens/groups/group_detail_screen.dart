@@ -9,7 +9,7 @@ import '../../blocs/meeting/meeting_state.dart';
 import '../../models/group.dart';
 import '../../models/meeting.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter/services.dart'; 
+import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 import 'meeting_map_picker.dart';
 
@@ -23,6 +23,12 @@ class GroupDetailScreen extends StatefulWidget {
 }
 
 class _GroupDetailScreenState extends State<GroupDetailScreen> {
+  DateTime? selectedDate;
+  TimeOfDay? selectedStartTime;
+  TimeOfDay? selectedEndTime;
+  String? locationDescription;
+  LatLng? selectedPosition;
+
   String? inviteCode;
 
   @override
@@ -71,7 +77,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         final place = placemarks.first;
         return '${place.street}, ${place.subLocality ?? place.locality ?? place.administrativeArea ?? ''} - ${place.administrativeArea ?? ''}';
       }
-      return 'Localização desconhecida'; 
+      return 'Localização desconhecida';
     } catch (e) {
       print('Error in _getAddressFromLatLng: $e');
       return 'Localização não disponível';
@@ -82,254 +88,251 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     final titleController = TextEditingController();
     final locationController = TextEditingController();
     final timeController = TextEditingController();
-    final latController = TextEditingController();
-    final longController = TextEditingController();
-    TimeOfDay? selectedTime;
-
-
     LatLng? initialMapLocation;
 
+    // Obter localização inicial (opcional)
     try {
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text('Permissão de localização negada.')),
-            );
-          }
-          
-        }
       }
-      if (permission == LocationPermission.deniedForever) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text(
-                    'Permissão de localização permanentemente negada. Habilite nas configurações do app.')),
-          );
-        }
-      }
-
       if (permission == LocationPermission.whileInUse ||
           permission == LocationPermission.always) {
         final position = await Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.high);
-
-        final address = await _getAddressFromLatLng(position.latitude, position.longitude);
-        locationController.text = address;
-        latController.text = position.latitude.toString();
-        longController.text = position.longitude.toString();
         initialMapLocation = LatLng(position.latitude, position.longitude);
       }
     } catch (e) {
-      locationController.text = '';
-      latController.text = '';
-      longController.text = '';
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao obter localização: $e')),
-        );
-      }
+      initialMapLocation = null;
     }
 
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text('Nova Reunião',
-            style: TextStyle(fontWeight: FontWeight.bold)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: InputDecoration(
-                  labelText: 'Título da Reunião',
-                  hintText: 'Ex: Estudo para a prova',
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                  prefixIcon: const Icon(Icons.title),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          title: const Text('Nova Reunião',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Campo para o título
+                TextField(
+                  controller: titleController,
+                  decoration: InputDecoration(
+                    labelText: 'Título da Reunião',
+                    hintText: 'Ex: Estudo para a prova',
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    prefixIcon: const Icon(Icons.title),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 15),
-              GestureDetector(
-                onTap: () async {
-                  final pickedTime = await showTimePicker(
-                    context: dialogContext,
-                    initialTime: TimeOfDay.now(),
-                  );
-                  if (pickedTime != null) {
+                const SizedBox(height: 15),
 
-                    (dialogContext as Element)
-                        .markNeedsBuild(); 
-                    selectedTime = pickedTime;
-                    timeController.text = selectedTime!.format(context);
-                  }
-                },
-                child: AbsorbPointer(
-                  child: TextField(
-                    controller: timeController,
-                    decoration: InputDecoration(
-                      labelText: 'Horário',
-                      hintText: 'Selecione o horário',
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                      prefixIcon: const Icon(Icons.access_time),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: locationController,
-                decoration: InputDecoration(
-                  labelText: 'Localização (Descrição)',
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                  prefixIcon: const Icon(Icons.location_on),
-                ),
-              ),
-              const SizedBox(height: 15),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: latController,
-                      readOnly: true,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Latitude',
-                        hintText: 'Ex: 38.7223',
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                        prefixIcon: const Icon(Icons.map),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
-                      controller: longController,
-                      readOnly: true,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Longitude',
-                        hintText: 'Ex: -9.1393',
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                        prefixIcon: const Icon(Icons.map),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 15),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    final LatLng? pickedLatLng = await Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (ctx) => MeetingMapPicker(initialLocation: initialMapLocation),
-                      ),
+                GestureDetector(
+                  onTap: () async {
+                    final pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate ?? DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime(DateTime.now().year + 1),
                     );
-
-                    if (pickedLatLng != null) {
-                      latController.text = pickedLatLng.latitude.toString();
-                      longController.text = pickedLatLng.longitude.toString();
-
-                      (dialogContext as Element).markNeedsBuild();
+                    if (pickedDate != null) {
+                      setState(() {
+                        selectedDate = pickedDate;
+                      });
                     }
                   },
-                  icon: const Icon(Icons.map_outlined),
-                  label: const Text('Selecionar no Mapa'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.secondary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
+                  child: AbsorbPointer(
+                    child: TextField(
+                      decoration: InputDecoration(
+                        labelText: 'Data da Reunião',
+                        hintText: selectedDate != null
+                            ? DateFormat('dd/MM/yyyy').format(selectedDate!)
+                            : 'Selecione a data',
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        prefixIcon: const Icon(Icons.calendar_today),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (titleController.text.trim().isEmpty ||
-                  selectedTime == null ||
-                  locationController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text(
-                          'Por favor, preencha todos os campos e selecione um horário.')),
-                );
-                return;
-              }
+                const SizedBox(height: 15),
 
-              double? lat;
-              double? long;
-              try {
-                if (latController.text.isNotEmpty) {
-                  lat = double.tryParse(latController.text);
-                  if (lat == null) {
-                    throw const FormatException('Latitude inválida');
-                  }
-                }
-                if (longController.text.isNotEmpty) {
-                  long = double.tryParse(longController.text);
-                  if (long == null) {
-                    throw const FormatException('Longitude inválida');
-                  }
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text('Erro de formato nas coordenadas: $e')),
-                  );
-                }
-                return;
-              }
+                // Selecionar Horário de Início
+                GestureDetector(
+                  onTap: () async {
+                    final pickedTime = await showTimePicker(
+                      context: context,
+                      initialTime: selectedStartTime ?? TimeOfDay.now(),
+                    );
+                    if (pickedTime != null) {
+                      setState(() {
+                        selectedStartTime = pickedTime;
+                      });
+                    }
+                  },
+                  child: AbsorbPointer(
+                    child: TextField(
+                      decoration: InputDecoration(
+                        labelText: 'Horário de Início',
+                        hintText: selectedStartTime != null
+                            ? selectedStartTime!.format(context)
+                            : 'Selecione o horário de início',
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        prefixIcon: const Icon(Icons.access_time),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 15),
 
-              Navigator.pop(dialogContext); 
+                // Selecionar Horário de Fim
+// Campo para selecionar o horário de fim
+                GestureDetector(
+                  onTap: () async {
+                    final pickedTime = await showTimePicker(
+                      context: context,
+                      initialTime: selectedEndTime ?? TimeOfDay.now(),
+                    );
+                    if (pickedTime != null) {
+                      setState(() {
+                        selectedEndTime = pickedTime;
+                      });
+                    }
+                  },
+                  child: AbsorbPointer(
+                    child: TextField(
+                      decoration: InputDecoration(
+                        labelText: 'Horário de Fim',
+                        hintText: selectedEndTime != null
+                            ? selectedEndTime!.format(context)
+                            : 'Selecione o horário de fim',
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        prefixIcon: const Icon(Icons.access_time),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 15),
 
-              final now = DateTime.now();
-              final dateTime = DateTime(now.year, now.month, now.day,
-                  selectedTime!.hour, selectedTime!.minute);
+                // Campo para localização
+                TextField(
+                  controller: locationController,
+                  decoration: InputDecoration(
+                    labelText: 'Localização (Descrição)',
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    prefixIcon: const Icon(Icons.location_on),
+                  ),
+                ),
+                const SizedBox(height: 15),
 
-              final newMeeting = Meeting(
-                id: DateTime.now().millisecondsSinceEpoch.toString(),
-                title: titleController.text.trim(),
-                dateTime: dateTime,
-                location: locationController.text.trim(),
-                groupId: widget.group.id,
-                lat: lat,
-                long: long,
-              );
-
-              context.read<MeetingBloc>().add(AddMeeting(newMeeting));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Reunião agendada com sucesso!')),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                // Botão para selecionar no mapa
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final LatLng? pickedLatLng = await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (ctx) =>
+                              MeetingMapPicker(initialLocation: initialMapLocation),
+                        ),
+                      );
+                      if (pickedLatLng != null) {
+                        setState(() {
+                          selectedPosition = pickedLatLng;
+                        });
+                      }
+                    },
+                    icon: const Icon(Icons.map_outlined),
+                    label: const Text('Selecionar no Mapa'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.secondary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            child: const Text('Criar'),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (titleController.text.trim().isEmpty ||
+                    selectedDate == null ||
+                    selectedStartTime == null ||
+                    selectedEndTime == null ||
+                    locationController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text(
+                            'Por favor, preencha todos os campos obrigatórios.')),
+                  );
+                  return;
+                }
+
+                final startDateTime = DateTime(
+                  selectedDate!.year,
+                  selectedDate!.month,
+                  selectedDate!.day,
+                  selectedStartTime!.hour,
+                  selectedStartTime!.minute,
+                );
+
+                final endDateTime = DateTime(
+                  selectedDate!.year,
+                  selectedDate!.month,
+                  selectedDate!.day,
+                  selectedEndTime!.hour,
+                  selectedEndTime!.minute,
+                );
+
+                if (startDateTime.isAfter(endDateTime) || startDateTime.isAtSameMomentAs(endDateTime)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text(
+                            'O horário de início deve ser antes do horário de fim.')),
+                  );
+                  return;
+                }
+
+                final newMeeting = Meeting(
+                  id: DateTime.now().millisecondsSinceEpoch.toString(),
+                  title: titleController.text.trim(),
+                  dateTime: startDateTime,
+                  endTime: endDateTime,
+                  location: locationController.text.trim(),
+                  groupId: widget.group.id,
+                  lat: selectedPosition?.latitude,
+                  long: selectedPosition?.longitude,
+                );
+
+                context.read<MeetingBloc>().add(AddMeeting(newMeeting));
+                Navigator.pop(dialogContext);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Reunião criada com sucesso!')),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Criar'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -343,7 +346,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       backgroundColor: theme.primaryColor.withOpacity(0.05),
       appBar: AppBar(
         title:
-            Text(group.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+        Text(group.name, style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         elevation: 0,
         actions: [
@@ -372,7 +375,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                     Text(
                       'Matéria:',
                       style:
-                          theme.textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                      theme.textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -440,12 +443,12 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                       runSpacing: 8.0,
                       children: group.members
                           .map((member) => Chip(
-                                label: Text(member,
-                                    style: const TextStyle(color: Colors.white)),
-                                backgroundColor: theme.colorScheme.primary,
-                                avatar: const Icon(Icons.person,
-                                    color: Colors.white, size: 18),
-                              ))
+                        label: Text(member,
+                            style: const TextStyle(color: Colors.white)),
+                        backgroundColor: theme.colorScheme.primary,
+                        avatar: const Icon(Icons.person,
+                            color: Colors.white, size: 18),
+                      ))
                           .toList(),
                     ),
                   ],
@@ -469,7 +472,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                     final groupMeetings = state.meetings
                         .where((m) => m.groupId == group.id)
                         .toList()
-                        ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+                      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
                     if (groupMeetings.isEmpty) {
                       return Center(
@@ -517,10 +520,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                                   ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             subtitle: Text(
-                              '${DateFormat('dd/MM/yyyy – HH:mm').format(m.dateTime)}\n${m.location}'
-                              '${(m.lat != null && m.long != null) ? '\nLat: ${m.lat!.toStringAsFixed(4)}, Long: ${m.long!.toStringAsFixed(4)}' : ''}',
-                              style: theme.textTheme.bodyMedium
-                                  ?.copyWith(color: Colors.grey[700]),
+                              '${DateFormat('dd/MM/yyyy – HH:mm').format(m.dateTime)} até ${DateFormat('HH:mm').format(m.endTime)}\n'
+                                  '${m.location}'
+                                  '${(m.lat != null && m.long != null) ? '\nLat: ${m.lat!.toStringAsFixed(4)}, Long: ${m.long!.toStringAsFixed(4)}' : ''}',
+                              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
                             ),
                             isThreeLine: true,
                             trailing: const Icon(Icons.arrow_forward_ios,
@@ -558,12 +561,12 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                   backgroundColor: theme.primaryColor,
                   foregroundColor: Colors.white,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
+                  const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   textStyle:
-                      const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -571,5 +574,43 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         ),
       ),
     );
+  }
+  Future<void> _pickDate(BuildContext context) async {
+    final DateTime now = DateTime.now();
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now,
+      lastDate: DateTime(now.year + 1),
+    );
+    if (picked != null) {
+      setState(() {
+        selectedDate = picked;
+      });
+    }
+  }
+
+  Future<void> _pickStartTime(BuildContext context) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (picked != null) {
+      setState(() {
+        selectedStartTime = picked;
+      });
+    }
+  }
+
+  Future<void> _pickEndTime(BuildContext context) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (picked != null) {
+      setState(() {
+        selectedEndTime = picked;
+      });
+    }
   }
 }

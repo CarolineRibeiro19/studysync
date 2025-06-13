@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/meeting/meeting_bloc.dart';
 import '../../blocs/meeting/meeting_state.dart';
@@ -50,7 +51,11 @@ class HistoryScreen extends StatelessWidget {
                       child: ListTile(
                         title: Text(m.title),
                         subtitle: Text(
-                            '${m.dateTime.day}/${m.dateTime.month} ${m.dateTime.hour}:${m.dateTime.minute} - $status'),
+                          '${DateFormat('dd/MM/yyyy – HH:mm').format(m.dateTime)} até ${DateFormat('HH:mm').format(m.endTime)}\n'
+                              '${m.location}'
+                              '${(m.lat != null && m.long != null) ? '\nLat: ${m.lat!.toStringAsFixed(4)}, Long: ${m.long!.toStringAsFixed(4)}' : ''}',
+                          style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
+                        ),
                       ),
                     );
                   },

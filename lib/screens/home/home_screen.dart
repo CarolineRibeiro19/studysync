@@ -12,130 +12,65 @@ import '../checkin/checkin_screen.dart';
 import '../groups/group_screen.dart';
 import '../profile/profile_screen.dart';
 
-
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final int initialIndex;
+
+  const HomeScreen({super.key, this.initialIndex = 0});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _currentIndex = 1;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+  }
+
+  final List<Widget> _screens = [
+    GroupScreen(),
+    CheckInScreen(),
+    RankingScreen(),
+    ProfileScreen(),
+  ];
 
   void _onItemTapped(int index) {
-    if (index == _currentIndex) return;
-
     setState(() {
       _currentIndex = index;
     });
-
-    switch (index) {
-      case 0:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const GroupScreen()),
-        );
-        break;
-      case 1:
-        break;
-      case 2:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const CheckInScreen()),
-        );
-        break;
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<UserBloc, UserState>(
-      builder: (context, userState) {
-        if (userState is! UserAuthenticated) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        final currentUser = userState.user;
-
-        return Scaffold(
-          backgroundColor: Colors.blue[50],
-          appBar: AppBar(
-            title: const Text('StudySync'),
-            centerTitle: true,
-            leading: IconButton(
-              icon: const Icon(Icons.star),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const RankingScreen()),
-                );
-              },
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.person),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                  );
-                },
-              ),
-            ],
+    return Scaffold(
+      body: _screens[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: _onItemTapped,
+        selectedItemColor: Theme.of(context).primaryColor,
+        unselectedItemColor: Colors.grey,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.group),
+            label: 'Grupos',
           ),
-          body: BlocBuilder<MeetingBloc, MeetingState>(
-            builder: (context, meetingState) {
-              if (meetingState is! MeetingLoaded) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final today = DateTime.now();
-
-              final todayMeetings = meetingState.meetings.where((meeting) {
-              final isSameDay =
-                    meeting.dateTime.year == today.year &&
-                    meeting.dateTime.month == today.month &&
-                    meeting.dateTime.day == today.day;
-
-                final isInUserGroups = currentUser.groupId?.contains(meeting.groupId) ?? false;
-
-                return isSameDay && isInUserGroups;
-              }).toList()
-                ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
-
-              return Padding(
-                padding: const EdgeInsets.all(16.0),
-                child:
-                    todayMeetings.isEmpty
-                        ? const Center(
-                          child: Text('Nenhuma reunião para hoje.'),
-                        )
-                        : ListView.builder(
-                          itemCount: todayMeetings.length,
-                          itemBuilder: (context, index) {
-                            final meeting = todayMeetings[index];
-                            return Card(
-                              child: ListTile(
-                                title: Text(meeting.title),
-                                subtitle: Text(
-                                  DateFormat('HH:mm').format(meeting.dateTime),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-              );
-            },
+          BottomNavigationBarItem(
+            icon: Icon(Icons.qr_code),
+            label: 'Check-in',
           ),
-          bottomNavigationBar: CustomBottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: _onItemTapped,
+          BottomNavigationBarItem(
+            icon: Icon(Icons.leaderboard),
+            label: 'Ranking',
           ),
-        );
-      },
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Perfil',
+          ),
+        ],
+      ),
     );
   }
 }

@@ -35,7 +35,8 @@ class MeetingService {
           .lte('date_time', endOfDay.toIso8601String())
           .order('date_time', ascending: true);
 
-      return response.map((json) => Meeting.fromJson(json)).toList();
+      // Certifique-se de que o retorno seja assim:
+      return (response as List<dynamic>).map((json) => Meeting.fromMap(json)).toList();
     } catch (e) {
       print('Erro ao buscar reuniões do dia: $e');
       return [];
@@ -51,7 +52,8 @@ class MeetingService {
           .eq('group_id', groupId)
           .order('date_time', ascending: true);
 
-      return response.map((json) => Meeting.fromJson(json)).toList();
+      // Certifique-se de que o retorno seja assim:
+      return (response as List<dynamic>).map((json) => Meeting.fromMap(json)).toList();
     } catch (e) {
       print('Error fetching group meetings: $e');
       rethrow;
@@ -63,10 +65,11 @@ class MeetingService {
       await supabase.from('meetings').insert({
         'title': meeting.title,
         'date_time': meeting.dateTime.toIso8601String(),
+        'end_time': meeting.endTime.toIso8601String(), // Adicionado
         'group_id': meeting.groupId,
         'location': meeting.location,
-        'lat': meeting.lat, // Added lat
-        'long': meeting.long, // Added long
+        'lat': meeting.lat, // Adicionado
+        'long': meeting.long, // Adicionado
       });
     } catch (e) {
       print('Error adding meeting: $e');

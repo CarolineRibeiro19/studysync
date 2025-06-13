@@ -1,76 +1,74 @@
-import 'package:equatable/equatable.dart';
+import 'package:flutter/material.dart';
 
-class Meeting extends Equatable {
+class Meeting {
   final String id;
   final String title;
   final DateTime dateTime;
-  final String groupId;
+  final DateTime endTime; // ⬅️ Novo campo
   final String location;
-  final double? lat; // Added lat field
-  final double? long; // Added long field
+  final String groupId;
+  final double? lat;
+  final double? long;
 
-  const Meeting({
+  Meeting({
     required this.id,
     required this.title,
     required this.dateTime,
-    required this.groupId,
+    required this.endTime, // ⬅️ Novo campo requerido
     required this.location,
-    this.lat, // Added lat to constructor
-    this.long, // Added long to constructor
+    required this.groupId,
+    this.lat,
+    this.long,
   });
 
-  factory Meeting.fromJson(Map<String, dynamic> json) {
-    return Meeting(
-      id: json['id'].toString(),
-      title: json['title'] ?? '',
-      dateTime: DateTime.parse(json['date_time']),
-      groupId: json['group_id'].toString(),
-      location: json['location'] ?? '',
-      lat: (json['lat'] as num?)?.toDouble(), 
-      long: (json['long'] as num?)?.toDouble(), 
-    );
-  }
-
-  Map<String, dynamic> toJson() {
+  // Método para converter Meeting em Map (para salvar no Supabase)
+  Map<String, dynamic> toMap() {
     return {
       'id': id,
       'title': title,
       'date_time': dateTime.toIso8601String(),
-      'group_id': groupId,
+      'end_time': endTime.toIso8601String(), // ⬅️ Novo campo
       'location': location,
+      'group_id': groupId,
       'lat': lat,
       'long': long,
     };
   }
 
+  // Método para criar um Meeting a partir de um Map (vindo do Supabase)
+  factory Meeting.fromMap(Map<String, dynamic> map) {
+    return Meeting(
+      id: map['id'],
+      title: map['title'],
+      dateTime: DateTime.parse(map['date_time']),
+      endTime: DateTime.parse(map['end_time']), // ⬅️ Novo campo
+      location: map['location'],
+      groupId: map['group_id'],
+      lat: map['lat']?.toDouble(),
+      long: map['long']?.toDouble(),
+    );
+  }
+
+  // Método auxiliar opcional
   Meeting copyWith({
     String? id,
     String? title,
     DateTime? dateTime,
-    String? groupId,
+    DateTime? endTime,
     String? location,
-    double? lat, 
+    String? groupId,
+    double? lat,
     double? long,
   }) {
     return Meeting(
       id: id ?? this.id,
       title: title ?? this.title,
       dateTime: dateTime ?? this.dateTime,
-      groupId: groupId ?? this.groupId,
+      endTime: endTime ?? this.endTime,
       location: location ?? this.location,
+      groupId: groupId ?? this.groupId,
       lat: lat ?? this.lat,
-      long: long ?? this.long, 
+      long: long ?? this.long,
     );
   }
-
-  @override
-  List<Object?> get props => [
-        id,
-        title,
-        dateTime,
-        groupId,
-        location,
-        lat, // Add lat to props
-        long, // Add long to props
-      ];
 }
