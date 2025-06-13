@@ -117,7 +117,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Campo para o título
                 TextField(
                   controller: titleController,
                   decoration: InputDecoration(
@@ -160,7 +159,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                 ),
                 const SizedBox(height: 15),
 
-                // Selecionar Horário de Início
                 GestureDetector(
                   onTap: () async {
                     final pickedTime = await showTimePicker(
@@ -189,8 +187,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                 ),
                 const SizedBox(height: 15),
 
-                // Selecionar Horário de Fim
-// Campo para selecionar o horário de fim
                 GestureDetector(
                   onTap: () async {
                     final pickedTime = await showTimePicker(
@@ -219,7 +215,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                 ),
                 const SizedBox(height: 15),
 
-                // Campo para localização
                 TextField(
                   controller: locationController,
                   decoration: InputDecoration(
@@ -231,7 +226,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                 ),
                 const SizedBox(height: 15),
 
-                // Botão para selecionar no mapa
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
@@ -243,8 +237,13 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                         ),
                       );
                       if (pickedLatLng != null) {
+                        final address = await _getAddressFromLatLng(
+                          pickedLatLng.latitude,
+                          pickedLatLng.longitude,
+                        );
                         setState(() {
                           selectedPosition = pickedLatLng;
+                          locationController.text = address;
                         });
                       }
                     },
@@ -336,6 +335,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
