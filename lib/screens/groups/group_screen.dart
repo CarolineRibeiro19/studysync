@@ -57,12 +57,15 @@ class _GroupScreenState extends State<GroupScreen> {
         content: TextField(
           controller: controller,
           decoration: InputDecoration(
-            labelText: 'ID do Grupo',
-            hintText: 'Ex: 12345',
+            labelText: 'Código do Grupo',
+            hintText: 'Ex: AB12CD',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             prefixIcon: const Icon(Icons.vpn_key),
           ),
-          keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.done,
+          autocorrect: false,
+          enableSuggestions: false,
+          textCapitalization: TextCapitalization.characters,
         ),
         actions: [
           TextButton(

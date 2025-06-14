@@ -32,9 +32,26 @@ class GroupRankingScreen extends StatelessWidget {
       };
     }).toList();
 
-    // Ordenar por pontos (maior para menor)
     members.sort((a, b) => b['points'].compareTo(a['points']));
     return members;
+  }
+
+  Widget _buildMedalIcon(int index) {
+    const medalTextStyle = TextStyle(fontSize: 22);
+
+    switch (index) {
+      case 0:
+        return const CircleAvatar(child: Text('🥇', style: medalTextStyle));
+      case 1:
+        return const CircleAvatar(child: Text('🥈', style: medalTextStyle));
+      case 2:
+        return const CircleAvatar(child: Text('🥉', style: medalTextStyle));
+      default:
+        return CircleAvatar(
+          backgroundColor: Colors.grey.withOpacity(0.2),
+          child: Text('${index + 1}'),
+        );
+    }
   }
 
   @override
@@ -73,10 +90,7 @@ class GroupRankingScreen extends StatelessWidget {
                     ? Theme.of(context).primaryColor.withOpacity(0.1)
                     : null,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                leading: CircleAvatar(
-                  backgroundColor: Theme.of(context).primaryColor.withOpacity(0.2),
-                  child: Text('${index + 1}'),
-                ),
+                leading: _buildMedalIcon(index),
                 title: Text(
                   user['name'],
                   style: TextStyle(

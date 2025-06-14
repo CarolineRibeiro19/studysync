@@ -223,7 +223,8 @@ class RankingScreen extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            GestureDetector(
+                            InkWell(
+                              borderRadius: BorderRadius.circular(8),
                               onTap: () {
                                 showGroupRankingBottomSheet(context, groupId, groupName);
                               },
@@ -236,14 +237,25 @@ class RankingScreen extends StatelessWidget {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.stars, color: theme.colorScheme.secondary, size: 20),
+                                    Icon(Icons.leaderboard, color: theme.colorScheme.secondary, size: 20),
                                     const SizedBox(width: 6),
-                                    Text(
-                                      '$points pts',
-                                      style: theme.textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: theme.colorScheme.secondary,
-                                      ),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '$points pts',
+                                          style: theme.textTheme.titleMedium?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: theme.colorScheme.secondary,
+                                          ),
+                                        ),
+                                        Text(
+                                          'Ver ranking',
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            color: theme.colorScheme.secondary,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
