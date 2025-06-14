@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_nearby_connections/flutter_nearby_connections.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
+import '../../services/nearby_service.dart';
 import '../../blocs/meeting/meeting_event.dart';
 import '../../blocs/meeting/meeting_bloc.dart';
 import '../../blocs/meeting/meeting_state.dart';
@@ -69,6 +71,82 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       );
     }
   }
+
+
+  void _shareInviteCodeNearby() async {
+    if (inviteCode == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Código de convite não disponível!')),
+      );
+      return;
+    }
+
+    final nearbyService = NearbyServiceManager();
+
+    try {
+      // Inicializar o serviço Nearby
+      await nearbyService.init(
+        serviceType: 'studysyncshare',
+        strategy: Strategy.P2P_CLUSTER,
+        deviceName: 'StudySyncDevice',
+        onStateChanged: (List<Device> devices) {
+          setState(() {
+            // Atualiza a lista de dispositivos disponíveis
+          });
+        },
+        onDataReceived: (dynamic data) {
+          if (data is String) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Mensagem recebida: $data')),
+            );
+          }
+        },
+      );
+
+      // Iniciar a descoberta de dispositivos
+      await nearbyService.startDiscovery();
+
+      // Exibir os dispositivos disponíveis em um modal
+      showModalBottomSheet(
+        context: context,
+        builder: (_) => StreamBuilder<List<Device>>(
+          stream: Stream.periodic(const Duration(seconds: 1), (_) => nearbyService.connectedDevices),
+          builder: (context, snapshot) {
+            final devices = snapshot.data ?? [];
+            return ListView.builder(
+              itemCount: devices.length,
+              itemBuilder: (context, index) {
+                final device = devices[index];
+                return ListTile(
+                  title: Text(device.deviceName),
+                  subtitle: Text('Estado: ${device.state.name}'),
+                  trailing: ElevatedButton(
+                    onPressed: () async {
+                      await nearbyService.sendMessage(device, inviteCode!);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Código enviado com sucesso!')),
+                      );
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Enviar'),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao compartilhar via Nearby: $e')),
+      );
+    } finally {
+      // Parar a descoberta de dispositivos ao sair
+      await nearbyService.stopDiscovery();
+    }
+  }
+
+
 
   Future<String> _getAddressFromLatLng(double latitude, double longitude) async {
     try {
@@ -389,41 +467,60 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
             ),
             const SizedBox(height: 20),
             if (inviteCode != null)
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                child: InkWell(
-                  onTap: _copyInviteCode,
-                  borderRadius: BorderRadius.circular(15),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Código de Convite:',
-                              style: theme.textTheme.bodySmall
-                                  ?.copyWith(color: Colors.grey[600]),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              inviteCode!,
-                              style: theme.textTheme.headlineSmall?.copyWith(
-                                  color: theme.primaryColor,
-                                  fontWeight: FontWeight.bold),
-                            ),
-                          ],
+              Row(
+                children: [
+                  Expanded(
+                    child: Card(
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      child: InkWell(
+                        onTap: _copyInviteCode,
+                        borderRadius: BorderRadius.circular(15),
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Código de Convite:',
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(color: Colors.grey[600]),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    inviteCode!,
+                                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                        color: Theme.of(context).primaryColor,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                              const Icon(Icons.copy, color: Colors.grey),
+                            ],
+                          ),
                         ),
-                        const Icon(Icons.copy, color: Colors.grey),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    child: InkWell(
+                      onTap: _shareInviteCodeNearby, // Método para compartilhar via Nearby
+                      borderRadius: BorderRadius.circular(15),
+                      child: const Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Icon(Icons.wifi_tethering, color: Colors.blueGrey),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            if (inviteCode != null) const SizedBox(height: 20),
+
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),

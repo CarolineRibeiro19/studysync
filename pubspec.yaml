@@ -9,6 +9,7 @@ dependencies:
   flutter:
     sdk: flutter
 
+  flutter_nearby_connections: ^1.0.0
   cupertino_icons: ^1.0.2
   flutter_bloc: ^8.1.6
   equatable: ^2.0.5
@@ -30,6 +31,7 @@ dependencies:
   app_links: ^3.5.1
   sign_in_with_apple: ^7.0.1
   provider: ^6.0.5
+  permission_handler: ^11.0.1
 
 dev_dependencies:
   flutter_test:
