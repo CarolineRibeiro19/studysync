@@ -25,24 +25,31 @@ class _GroupScreenState extends State<GroupScreen> {
     _loadGroups(); 
   }
 
-  
+
   Future<void> _loadGroups() async {
     setState(() {
-      isLoading = true; 
+      isLoading = true;
     });
     try {
-      final loadedGroups = await _groupService.fetchUserGroups();
+      final loadedHiveGroups = await _groupService.fetchUserGroups();
+
+      // Buscar membros para cada grupo
+      final groupsWithMembers = await Future.wait(loadedHiveGroups.map((hiveGroup) async {
+        final membersRes = await _groupService.fetchGroupMembers(hiveGroup.id);
+        final members = membersRes.map((e) => e['name'] as String? ?? 'Sem nome').toList();
+        return hiveGroup.toGroup(members: members.cast<String>());
+      }));
+
       setState(() {
-        groups = loadedGroups; 
-        isLoading = false; 
+        groups = groupsWithMembers;
+        isLoading = false;
       });
     } catch (e) {
-      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao carregar grupos: $e')),
       );
       setState(() {
-        isLoading = false; 
+        isLoading = false;
       });
     }
   }

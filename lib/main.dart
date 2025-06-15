@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive/hive.dart';
+import 'package:hive_flutter/adapters.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'blocs/user/user_bloc.dart';
 import 'blocs/user/user_event.dart';
 import 'blocs/meeting/meeting_bloc.dart';
+import 'models/hive_group_model.dart';
 import 'routes.dart';
 import 'themes//app_theme.dart';
 import 'services/meeting_service.dart';
@@ -16,11 +19,20 @@ import 'services/group_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await Hive.initFlutter();
+  Hive.registerAdapter(HiveGroupAdapter());
+
+  await Hive.openBox<HiveGroup>('groups');
+
   await Supabase.initialize(
     url: 'https://gxsjhocypdxvatgfgckf.supabase.co',
     anonKey:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd4c2pob2N5cGR4dmF0Z2ZnY2tmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NzgwODgsImV4cCI6MjA2NTE1NDA4OH0.nGJ9K226qwP9kRMMpByKzoEhwvcuDq-CzL_HE4ybRL4',
   );
+
+  // Sincronizar grupos offline
+  final groupService = GroupService();
+  await groupService.syncOfflineGroups();
 
   runApp(const StudySyncApp());
 }

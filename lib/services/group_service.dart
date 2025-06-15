@@ -1,48 +1,67 @@
 import 'dart:math';
+import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/group.dart';
+import '../models/hive_group_model.dart';
 
 class GroupService {
   final SupabaseClient supabase = Supabase.instance.client;
 
-  /// Busca todos os grupos do usuário atual
-  Future<List<Group>> fetchUserGroups() async {
+  Future<List<HiveGroup>> fetchUserGroups() async {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return [];
-
 
     final memberResponse = await supabase
         .from('group_members')
         .select('group_id, groups(id, name, subject)')
         .eq('user_id', userId);
 
-
-    List<Group> result = [];
+    List<HiveGroup> result = [];
 
     for (var entry in memberResponse as List) {
       final groupData = entry['groups'];
       final groupId = groupData['id'];
 
+      // Buscar o código de convite do grupo
+      final inviteCode = await fetchInviteCode(groupId);
 
+      // Buscar os membros do grupo
       final membersRes = await supabase
           .from('group_members')
           .select('profiles(name)')
           .eq('group_id', groupId);
 
       final members = (membersRes as List)
-          .map((e) => e['profiles']?['name'] ?? 'Sem nome')
+          .map((e) => e['profiles']['name'] ?? 'Sem nome')
           .cast<String>()
           .toList();
 
-      result.add(Group(
+      result.add(HiveGroup(
         id: groupId,
         name: groupData['name'],
         subject: groupData['subject'],
-        members: members,
+        inviteCode: inviteCode ?? 'N/A',
+        isSynced: true, // Assume que os grupos carregados do Supabase estão sincronizados
       ));
     }
 
+    // Salvar no Hive
+    final groupBox = Hive.box<HiveGroup>('groups');
+    groupBox.clear(); // Limpa os grupos antigos
+    for (var group in result) {
+      groupBox.put(group.id, group);
+    }
+
     return result;
+  }
+
+  Future<List<Map<String, dynamic>>> fetchGroupMembers(String groupId) async {
+    final membersRes = await supabase
+        .from('group_members')
+        .select('profiles(name)')
+        .eq('group_id', groupId);
+
+    return (membersRes as List).map((e) => e['profiles'] as Map<String, dynamic>).toList();
   }
 
 
@@ -52,6 +71,14 @@ class GroupService {
     return List.generate(length, (_) => chars[rand.nextInt(chars.length)]).join();
   }
 
+  void debugHiveBox() {
+    final groupBox = Hive.box<HiveGroup>('groups');
+    print('Grupos na HiveBox:');
+    for (var group in groupBox.values) {
+      print('ID: ${group.id}, Nome: ${group.name}, Código: ${group.inviteCode}, Sincronizado: ${group.isSynced}');
+    }
+  }
+
   Future<bool> createGroup({
     required String name,
     required String subject,
@@ -59,43 +86,53 @@ class GroupService {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return false;
 
-    final insertResponse = await supabase
-        .from('groups')
-        .insert({'name': name, 'subject': subject, 'created_by': userId})
-        .select()
-        .single();
+    final groupBox = Hive.box<HiveGroup>('groups');
 
-    final groupId = insertResponse['id'];
+    try {
+      // Tenta criar o grupo no Supabase
+      final insertResponse = await supabase
+          .from('groups')
+          .insert({'name': name, 'subject': subject, 'created_by': userId})
+          .select()
+          .single();
 
-    final user = await supabase
-      .from('profiles')
-      .select('group_id')
-      .eq('id', userId)
-      .single();
+      final groupId = insertResponse['id'];
+      final inviteCode = _generateCode(6);
 
-    final List<dynamic> currentGroupIds = user['group_id'] ?? [];
-    final updatedGroupIds = {...currentGroupIds, groupId}.toList(); // ensures uniqueness
+      await supabase.from('group_invites').insert({
+        'group_id': groupId,
+        'code': inviteCode,
+      });
 
-    await supabase
-        .from('profiles')
-        .update({'group_id': updatedGroupIds})
-        .eq('id', userId);
-
-
-    await supabase.from('group_members').insert({
-      'user_id': userId,
-      'group_id': groupId,
-    });
-
-    // Cria código de convite
-    final inviteCode = _generateCode(6);
-
-    await supabase.from('group_invites').insert({
-      'group_id': groupId,
-      'code': inviteCode,
-    });
-
-    return true;
+      // Salva no Hive como sincronizado
+      groupBox.put(
+        groupId,
+        HiveGroup(
+          id: groupId,
+          name: name,
+          subject: subject,
+          inviteCode: inviteCode,
+          isSynced: true,
+        ),
+      );
+      debugHiveBox();
+      return true;
+    } catch (e) {
+      // Se falhar, salva no Hive como não sincronizado
+      final tempId = DateTime.now().millisecondsSinceEpoch.toString(); // ID temporário
+      groupBox.put(
+        tempId,
+        HiveGroup(
+          id: tempId,
+          name: name,
+          subject: subject,
+          inviteCode: 'N/A', // Código de convite será gerado após sincronização
+          isSynced: false,
+        ),
+      );
+      debugHiveBox();
+      return true; // Retorna true porque o grupo foi salvo localmente
+    }
   }
 
 
@@ -135,21 +172,71 @@ class GroupService {
 
     final groupId = invite['group_id'];
 
-    final existing = await supabase
-        .from('group_members')
-        .select()
-        .eq('user_id', userId)
-        .eq('group_id', groupId)
-        .maybeSingle();
-
-    if (existing != null) return false;
-
     await supabase.from('group_members').insert({
       'user_id': userId,
       'group_id': groupId,
     });
 
+    // Buscar detalhes do grupo
+    final group = await fetchGroupById(groupId);
+    if (group != null) {
+      // Salvar no Hive
+      final groupBox = Hive.box<HiveGroup>('groups');
+      groupBox.put(
+        group.id,
+        HiveGroup(
+          id: group.id,
+          name: group.name,
+          subject: group.subject,
+          inviteCode: await fetchInviteCode(group.id) ?? 'N/A',
+        ),
+      );
+    }
+
     return true;
+  }
+
+  Future<void> syncOfflineGroups() async {
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    final groupBox = Hive.box<HiveGroup>('groups');
+    final offlineGroups = groupBox.values.where((group) => !group.isSynced).toList();
+
+    for (var group in offlineGroups) {
+      try {
+        // Cria o grupo no Supabase
+        final insertResponse = await supabase
+            .from('groups')
+            .insert({'name': group.name, 'subject': group.subject, 'created_by': userId})
+            .select()
+            .single();
+
+        final groupId = insertResponse['id'];
+        final inviteCode = _generateCode(6);
+
+        await supabase.from('group_invites').insert({
+          'group_id': groupId,
+          'code': inviteCode,
+        });
+
+        // Atualiza o grupo no Hive como sincronizado
+        groupBox.put(
+          groupId,
+          group.copyWith(
+            id: groupId,
+            inviteCode: inviteCode,
+            isSynced: true,
+          ),
+        );
+
+        // Remove o grupo com ID temporário
+        groupBox.delete(group.id);
+      } catch (e) {
+        // Log de erro (opcional)
+        print('Erro ao sincronizar grupo offline: $e');
+      }
+    }
   }
 
   Future<String?> fetchInviteCode(String groupId) async {

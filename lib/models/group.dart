@@ -1,3 +1,5 @@
+import "../models/hive_group_model.dart";
+
 class Group {
   final String id;
   final String name;
@@ -40,5 +42,16 @@ class Group {
       'name': name,
       'subject': subject,
     };
+  }
+}
+
+extension HiveGroupToGroup on HiveGroup {
+  Group toGroup({List<String>? members}) {
+    return Group(
+      id: id,
+      name: name,
+      subject: subject,
+      members: members ?? [], // Preenche com os membros fornecidos ou mantém vazio
+    );
   }
 }

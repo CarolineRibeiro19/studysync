@@ -4,7 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:studysync/blocs/user/user_bloc.dart'; 
 import 'package:studysync/blocs/user/user_state.dart'; 
 import 'package:studysync/services/group_service.dart'; 
-import 'package:studysync/models/group.dart'; 
+import 'package:studysync/models/group.dart';
+
+import '../../models/hive_group_model.dart';
 
 class RankingScreen extends StatelessWidget {
   const RankingScreen({super.key});
@@ -55,9 +57,9 @@ class RankingScreen extends StatelessWidget {
               );
             }
 
-            
-            return FutureBuilder<List<Group>>(
-              future: groupService.fetchUserGroups(), 
+
+            return FutureBuilder<List<HiveGroup>>(
+              future: groupService.fetchUserGroups(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -72,9 +74,10 @@ class RankingScreen extends StatelessWidget {
                   );
                 }
 
-                final List<Group> allUserGroups = snapshot.data!;
+                final List<Group> allUserGroups = snapshot.data!
+                    .map((hiveGroup) => hiveGroup.toGroup())
+                    .toList();
 
-                
                 final Map<String, String> groupNames = {
                   for (var group in allUserGroups) group.id: group.name,
                 };

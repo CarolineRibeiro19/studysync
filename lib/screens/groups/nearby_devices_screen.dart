@@ -1,10 +1,14 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_nearby_connections/flutter_nearby_connections.dart';
+import 'package:hive/hive.dart';
+import '../../models/hive_group_model.dart';
 import '../../services/nearby_service.dart';
 import '../../services/group_service.dart';
 
 class NearbyDevicesScreen extends StatefulWidget {
-  final bool isReceiving; // Define se o usuário está recebendo ou compartilhando
+  final bool isReceiving;
 
   const NearbyDevicesScreen({Key? key, required this.isReceiving}) : super(key: key);
 
@@ -15,7 +19,7 @@ class NearbyDevicesScreen extends StatefulWidget {
 class _NearbyDevicesScreenState extends State<NearbyDevicesScreen> {
   final NearbyServiceManager _service = NearbyServiceManager();
   List<Device> _devices = [];
-  String? _selectedGroupCode; // Código do grupo selecionado para compartilhar
+  String? _selectedGroupCode;
 
   @override
   void initState() {
@@ -29,25 +33,35 @@ class _NearbyDevicesScreenState extends State<NearbyDevicesScreen> {
       strategy: Strategy.P2P_CLUSTER,
       deviceName: 'StudySyncDevice',
       onStateChanged: (List<Device> devices) {
+        print('[Nearby] Dispositivos detectados: ${devices.map((d) => d.deviceName).toList()}');
         setState(() {
           _devices = devices;
         });
+
+        for (var device in devices) {
+          if (device.state == SessionState.notConnected) {
+            try {
+              print('[Nearby] Convidando dispositivo: ${device.deviceName}');
+              _service.invite(device);
+            } catch (e) {
+              print('[Nearby] Erro ao convidar dispositivo: $e');
+            }
+          }
+        }
       },
       onDataReceived: (dynamic data) async {
-        if (widget.isReceiving && data is Map && data.containsKey('message')) {
-          final receivedCode = data['message'];
+        if (widget.isReceiving && data is Message) {
+          final receivedCode = data.message;
           final success = await _joinGroupByCode(receivedCode);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(success ? 'Grupo adicionado com sucesso!' : 'Código inválido.')),
-          );
+          _showConfirmationDialog(success, receivedCode);
         }
       },
     );
 
     if (widget.isReceiving) {
-      _service.startDiscovery();
-    } else {
       _service.startAdvertising();
+    } else {
+      _service.startDiscovery();
     }
   }
 
@@ -56,17 +70,55 @@ class _NearbyDevicesScreenState extends State<NearbyDevicesScreen> {
     return await groupService.joinGroupByInviteCode(code);
   }
 
-  void _shareGroupCode(Device device) {
-    if (_selectedGroupCode != null) {
-      _service.sendMessage(device, _selectedGroupCode!);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Código enviado com sucesso!')),
-      );
+  void _shareGroupCode(Device device) async {
+    if (device.state == SessionState.connected) {
+      if (_selectedGroupCode != null) {
+        try {
+          await _service.sendMessage(device, jsonEncode({'message': _selectedGroupCode!}));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Código enviado com sucesso!')),
+          );
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro ao enviar código: $e')),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Selecione um grupo para compartilhar.')),
+        );
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecione um grupo para compartilhar.')),
+        const SnackBar(content: Text('Dispositivo não está conectado.')),
       );
     }
+  }
+
+  void _showConfirmationDialog(bool success, String code) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Convite Recebido'),
+        content: Text('Você deseja entrar no grupo com o código: $code?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Recusar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final success = await _joinGroupByCode(code);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(success ? 'Você entrou no grupo!' : 'Erro ao entrar no grupo.')),
+              );
+            },
+            child: const Text('Aceitar'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -84,7 +136,7 @@ class _NearbyDevicesScreenState extends State<NearbyDevicesScreen> {
               items: _getUserGroups().map((group) {
                 return DropdownMenuItem(
                   value: group['code'],
-                  child: Text(group['name'] ?? 'Nome não disponível'),
+                  child: Text('${group['name']} (${group['code']})'),
                 );
               }).toList(),
               onChanged: (value) {
@@ -121,11 +173,18 @@ class _NearbyDevicesScreenState extends State<NearbyDevicesScreen> {
   }
 
   List<Map<String, String>> _getUserGroups() {
-    // Simula a obtenção de grupos do usuário
-    return [
-      {'name': 'Grupo 1', 'code': 'ABC123'},
-      {'name': 'Grupo 2', 'code': 'DEF456'},
-    ];
+    final groupBox = Hive.box<HiveGroup>('groups');
+    if (!groupBox.isOpen) {
+      print('[Hive] A HiveBox não está aberta.');
+      return [];
+    }
+
+    return groupBox.values.map((group) {
+      return {
+        'name': group.name,
+        'code': group.inviteCode,
+      };
+    }).toList();
   }
 
   @override
