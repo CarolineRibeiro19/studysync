@@ -8,11 +8,10 @@ class NearbyServiceManager {
   NearbyServiceManager._internal();
 
   final NearbyService _nearbyService = NearbyService();
-  late StreamSubscription _stateSubscription;
-  late StreamSubscription _dataSubscription;
+  StreamSubscription? _stateSubscription;
+  StreamSubscription? _dataSubscription;
 
   final List<Device> _connectedDevices = [];
-
   bool _isInitialized = false;
 
   Future<void> init({
@@ -22,57 +21,78 @@ class NearbyServiceManager {
     required Function(List<Device>) onStateChanged,
     required Function(dynamic) onDataReceived,
   }) async {
-    if (_isInitialized) return;
+    if (_isInitialized) {
+      print('[Nearby] Serviço já inicializado.');
+      return;
+    }
 
-    // Solicitar permissões necessárias
-    await _requestPermissions();
+    try {
+      print('[Nearby] Solicitando permissões...');
+      final granted = await _requestPermissions();
+      if (!granted) {
+        throw Exception('Permissões necessárias não foram concedidas.');
+      }
 
-    await _nearbyService.init(
-      serviceType: serviceType,
-      strategy: strategy,
-      deviceName: deviceName,
-      callback: () {
-        print('[Nearby] Service initialized.');
-      },
-    );
+      print('[Nearby] Inicializando serviço...');
+      await _nearbyService.init(
+        serviceType: serviceType,
+        strategy: strategy,
+        deviceName: deviceName,
+        callback: () {
+          print('[Nearby] Serviço inicializado com sucesso.');
+        },
+      );
 
-    _stateSubscription = _nearbyService.stateChangedSubscription(
-      callback: (devicesList) {
-        print('[Nearby] State changed: $devicesList');
-        _updateConnectedDevices(devicesList);
-        onStateChanged(devicesList);
-      },
-    );
+      _stateSubscription = _nearbyService.stateChangedSubscription(
+        callback: (devicesList) {
+          print('[Nearby] Estado alterado: $devicesList');
+          _updateConnectedDevices(devicesList);
+          onStateChanged(devicesList);
+        },
+      );
 
-    _dataSubscription = _nearbyService.dataReceivedSubscription(
-      callback: (data) {
-        print('[Nearby] Data received: $data');
-        onDataReceived(data);
-      },
-    );
+      _dataSubscription = _nearbyService.dataReceivedSubscription(
+        callback: (data) {
+          print('[Nearby] Dados recebidos: $data');
+          onDataReceived(data);
+        },
+      );
 
-    _isInitialized = true;
+      _isInitialized = true;
+    } catch (e) {
+      print('[Nearby] Erro ao inicializar o serviço: $e');
+      rethrow;
+    }
   }
 
-  Future<void> _requestPermissions() async {
+  Future<bool> _requestPermissions() async {
     final permissions = [
       Permission.bluetooth,
       Permission.bluetoothConnect,
       Permission.bluetoothScan,
       Permission.location,
+      Permission.nearbyWifiDevices,
     ];
 
     for (var permission in permissions) {
       if (!await permission.isGranted) {
+        print('[Nearby] Solicitando permissão: $permission');
         final status = await permission.request();
         if (!status.isGranted) {
-          throw Exception('Permissão ${permission.value} negada.');
+          print('[Nearby] Permissão negada: $permission');
+          return false;
         }
+      } else {
+        print('[Nearby] Permissão já concedida: $permission');
       }
     }
+
+    print('[Nearby] Todas as permissões concedidas.');
+    return true;
   }
 
   void _updateConnectedDevices(List<Device> updatedDevices) {
+    print('[Nearby] Atualizando dispositivos conectados: $updatedDevices');
     _connectedDevices
       ..clear()
       ..addAll(updatedDevices.where((d) => d.state == SessionState.connected));
@@ -120,8 +140,8 @@ class NearbyServiceManager {
 
   Future<void> dispose() async {
     print('[Nearby] Disposing nearby service...');
-    await _stateSubscription.cancel();
-    await _dataSubscription.cancel();
+    await _stateSubscription?.cancel();
+    await _dataSubscription?.cancel();
     _isInitialized = false;
   }
 }

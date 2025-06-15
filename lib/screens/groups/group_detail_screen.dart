@@ -5,6 +5,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import '../../services/nearby_service.dart';
+import './nearby_devices_screen.dart';
 import '../../blocs/meeting/meeting_event.dart';
 import '../../blocs/meeting/meeting_bloc.dart';
 import '../../blocs/meeting/meeting_state.dart';
@@ -84,65 +85,31 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     final nearbyService = NearbyServiceManager();
 
     try {
-      // Inicializar o serviço Nearby
+      print('[Nearby] Iniciando serviço para compartilhar código.');
+
+      // Inicializa o serviço Nearby
       await nearbyService.init(
         serviceType: 'studysyncshare',
         strategy: Strategy.P2P_CLUSTER,
         deviceName: 'StudySyncDevice',
         onStateChanged: (List<Device> devices) {
-          setState(() {
-            // Atualiza a lista de dispositivos disponíveis
-          });
+          print('[Nearby] Dispositivos atualizados: $devices');
         },
         onDataReceived: (dynamic data) {
-          if (data is String) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Mensagem recebida: $data')),
-            );
-          }
+          print('[Nearby] Dados recebidos: $data');
         },
       );
 
-      // Iniciar a descoberta de dispositivos
-      await nearbyService.startDiscovery();
-
-      // Exibir os dispositivos disponíveis em um modal
-      showModalBottomSheet(
-        context: context,
-        builder: (_) => StreamBuilder<List<Device>>(
-          stream: Stream.periodic(const Duration(seconds: 1), (_) => nearbyService.connectedDevices),
-          builder: (context, snapshot) {
-            final devices = snapshot.data ?? [];
-            return ListView.builder(
-              itemCount: devices.length,
-              itemBuilder: (context, index) {
-                final device = devices[index];
-                return ListTile(
-                  title: Text(device.deviceName),
-                  subtitle: Text('Estado: ${device.state.name}'),
-                  trailing: ElevatedButton(
-                    onPressed: () async {
-                      await nearbyService.sendMessage(device, inviteCode!);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Código enviado com sucesso!')),
-                      );
-                      Navigator.pop(context);
-                    },
-                    child: const Text('Enviar'),
-                  ),
-                );
-              },
-            );
-          },
-        ),
+      // Redireciona para a tela de dispositivos próximos no modo de compartilhamento
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const NearbyDevicesScreen(isReceiving: false)),
       );
     } catch (e) {
+      print('[Nearby] Erro ao compartilhar código: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao compartilhar via Nearby: $e')),
       );
-    } finally {
-      // Parar a descoberta de dispositivos ao sair
-      await nearbyService.stopDiscovery();
     }
   }
 
