@@ -9,6 +9,9 @@ dependencies:
   flutter:
     sdk: flutter
 
+  intl: ^0.18.1
+  path: ^1.9.0
+  permission_handler: ^11.3.1
   cupertino_icons: ^1.0.2
   flutter_bloc: ^8.1.6
   equatable: ^2.0.5
@@ -30,6 +33,7 @@ dependencies:
   app_links: ^3.5.1
   sign_in_with_apple: ^7.0.1
   provider: ^6.0.5
+  image_picker: ^1.0.4
 
 dev_dependencies:
   flutter_test:

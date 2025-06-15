@@ -9,6 +9,7 @@ import '../../blocs/checkin/check_in_bloc.dart';
 import '../../blocs/checkin/check_in_event.dart';
 import '../../blocs/checkin/check_in_state.dart';
 import '../../models/meeting.dart';
+import '../nearby_chat/nearby_chat_screen.dart'; // Import do chat
 
 class CheckInScreen extends StatefulWidget {
   const CheckInScreen({super.key});
@@ -201,11 +202,37 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
-            if (checkInState is! CheckInInitial &&
-                checkInState is! CheckInLoading &&
-                checkInState is! CheckInReadyForShake &&
-                checkInState is! CheckInProcessing)
-              const SizedBox(height: 10),
+            const SizedBox(height: 10),
+
+            if (checkInState is CheckInSuccess)
+              ElevatedButton.icon(
+                icon: const Icon(Icons.chat_bubble_outline),
+                label: const Text('Entrar no Chat da Reunião'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () {
+                  final user = Supabase.instance.client.auth.currentUser;
+                  if (user != null && _selectedMeeting != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => NearbyChatScreen(
+                          userName: user.userMetadata?['name'] ?? user.email ?? 'Participante',
+                          meetingId: _selectedMeeting!.id.toString(),
+                          isHost: true,
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+
+            const SizedBox(height: 10),
+
             if (checkInState is! CheckInInitial &&
                 checkInState is! CheckInLoading &&
                 checkInState is! CheckInReadyForShake &&
@@ -230,3 +257,5 @@ class _CheckInScreenState extends State<CheckInScreen> {
     );
   }
 }
+
+
