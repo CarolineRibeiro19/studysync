@@ -20,13 +20,6 @@
 - 🏆 **Sistema de Pontuação**
   - Pontos atribuídos por presença
   - Ranking de participantes por grupo
-
-### 🔧 Em desenvolvimento
-
-- 🎖️ Sistema de conquistas e metas
-- 📲 Integração com sensores (ex: acelerômetro)
-- 🔗 Alternativa com Bluetooth P2P
-
 ---
 
 ## 🛠️ Tecnologias utilizadas
