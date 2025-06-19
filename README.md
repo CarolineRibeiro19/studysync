@@ -1,16 +1,46 @@
-# studysync
+# 📚 StudySync
 
-A new Flutter project.
+**StudySync** é um aplicativo mobile para organização e participação em reuniões de estudo. Ele oferece check-in baseado em localização, chat offline via rede local e gamificação com rankings por grupo.
 
-## Getting Started
+---
 
-This project is a starting point for a Flutter application.
+## 🚀 Funcionalidades
 
-A few resources to get you started if this is your first Flutter project:
+### ✅ Funcionalidades principais
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- 📅 **Marcar Reuniões**
+  - Criação de reuniões com data, hora e localização
+- 🔐 **Autenticação de Usuário**
+  - Cadastro e login com Supabase Auth
+- 📍 **Check-in com Localização**
+  - Verifica se o usuário está próximo ao local da reunião via GPS
+- 💬 **Chat Offline**
+  - Comunicação local entre participantes por socket TCP usando Wi-Fi ou hotspot
+  - Suporte a envio de mensagens e imagens
+- 🏆 **Sistema de Pontuação**
+  - Pontos atribuídos por presença
+  - Ranking de participantes por grupo
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### 🔧 Em desenvolvimento
+
+- 🎖️ Sistema de conquistas e metas
+- 📲 Integração com sensores (ex: acelerômetro)
+- 🔗 Alternativa com Bluetooth P2P
+
+---
+
+## 🛠️ Tecnologias utilizadas
+
+- **Flutter** — desenvolvimento multiplataforma
+- **Supabase** — backend (auth + PostgreSQL + storage)
+- **Geolocator** — localização em tempo real
+- **TCP Sockets** — comunicação offline local
+- **Hive** — armazenamento local (grupos, cache)
+- **Google Maps** — escolha interativa de local
+
+---
+## Contribuidores
+
+- **Caroline Ribeiro**
+- **Mateus da Fonte**
+- **Victor Milhomem**
